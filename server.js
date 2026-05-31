@@ -30,6 +30,10 @@ app.use('/api/wajib-iwk', require('./routes/wajibIwkRoutes'));
 app.use('/api/parameter-iwk', require('./routes/parameterRoutes'));
 app.use('/api/iuran-wajib', require('./routes/iuranRoutes'));
 app.use('/api/kas', require('./routes/kasRoutes'));
+app.use('/api/users', require('./routes/userRoutes'));
+app.use('/api/audit-trail', require('./routes/auditRoutes'));
+app.use('/api/info', require('./routes/infoRoutes'));
+app.use('/api/public', require('./routes/publicRoutes'));
 app.use('/api/export', require('./routes/exportRoutes'));
 
 app.listen(PORT, () => console.log(`SIKERT running on http://localhost:${PORT}`));

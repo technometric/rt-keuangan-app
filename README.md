@@ -1,10 +1,20 @@
 # SIKERT - Sistem Keuangan RT
 
-Starter project aplikasi keuangan RT berbasis Node.js, MongoDB, dan HTML/EJS.
+Aplikasi keuangan RT berbasis Node.js, MongoDB, dan HTML/EJS.
 
-## Fitur Starter
+## Versi
+
+```txt
+v1.1.0
+```
+
+## Fitur
 
 - Login multi role: admin, petugas, umum
+- Halaman umum langsung di root `/`
+- Admin masuk melalui `/admin`
+- Petugas masuk dari tombol Login Petugas di halaman umum
+- Management user admin/petugas/umum
 - Area petugas: utara, tengah, selatan
 - Master warga wajib IWK
 - Parameter komponen IWK
@@ -13,6 +23,9 @@ Starter project aplikasi keuangan RT berbasis Node.js, MongoDB, dan HTML/EJS.
 - Catatan petugas wajib jika pembayaran kurang/belum bayar
 - Transaksi kas manual debet/kredit
 - Dashboard saldo umum/admin
+- Audit trail khusus admin, bisa hide/show
+- Audit trail otomatis expire 2 bulan
+- Info versi aplikasi
 - Export ringkasan bulanan PDF
 - Print halaman dashboard untuk PNG/manual screenshot
 
@@ -39,23 +52,24 @@ Buka:
 http://localhost:3035
 ```
 
+## Akses Halaman
+
+```txt
+Umum   : http://localhost:3035/
+Admin  : http://localhost:3035/admin
+Petugas: tombol Login Petugas dari halaman umum
+```
+
 ## Akun Default
 
 ```txt
-Admin         : admin / admin123
+Admin          : admin / admin123
 Petugas Utara : utara / petugas123
 Petugas Tengah: tengah / petugas123
 Petugas Selatan: selatan / petugas123
-Umum          : umum / umum123
+Umum           : umum / umum123
 ```
 
-## Catatan
+## Catatan Update v1.1.0
 
-Starter ini sudah menjadi pondasi awal. Fitur lanjutan yang masih bisa ditambah:
-
-- Export PNG otomatis dari server
-- Backup/import JSON database
-- CRUD user lengkap dari UI
-- Edit/hapus iuran dengan auto reversal transaksi kas
-- Laporan detail per bulan dan per jenis kas
-- PDF desain lebih premium
+Untuk update dari v1.0.0, jalankan ulang aplikasi saja. Tidak wajib seed ulang. Kalau ingin akun default baru muncul, baru jalankan `npm run seed`.

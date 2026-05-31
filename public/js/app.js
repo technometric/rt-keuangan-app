@@ -1,5 +1,7 @@
 const rupiah = n => 'Rp ' + Number(n || 0).toLocaleString('id-ID');
 const nice = s => String(s || '').replaceAll('_',' ').replace(/\b\w/g, c => c.toUpperCase());
+const isPublic = () => window.PUBLIC_DASHBOARD === true;
+const apiBase = path => isPublic() ? `/api/public${path}` : path;
 
 async function api(url, options = {}) {
   const res = await fetch(url, options);
@@ -9,7 +11,7 @@ async function api(url, options = {}) {
 }
 
 async function loadSaldo() {
-  const saldo = await api('/api/kas/saldo');
+  const saldo = await api(apiBase('/api/kas/saldo').replace('/api/public/api/kas/saldo','/api/public/saldo'));
   const el = document.getElementById('saldoGrid');
   el.innerHTML = Object.entries(saldo).map(([k,v]) => `<div class="card"><h3>${nice(k)}</h3><div class="money">${rupiah(v)}</div></div>`).join('');
 }
@@ -31,7 +33,8 @@ async function loadIwk() {
 
 async function loadIwkBulanIni() {
   const d = new Date();
-  const data = await api(`/api/iuran-wajib?bulan=${d.getMonth()+1}&tahun=${d.getFullYear()}`);
+  const url = isPublic() ? `/api/public/iuran-wajib?bulan=${d.getMonth()+1}&tahun=${d.getFullYear()}` : `/api/iuran-wajib?bulan=${d.getMonth()+1}&tahun=${d.getFullYear()}`;
+  const data = await api(url);
   const el = document.getElementById('iwkRows');
   if (!el) return;
   el.innerHTML = data.map(x => `<tr><td>${x.warga?.nama || '-'}</td><td>${x.warga?.no_rumah || '-'}</td><td>${x.warga?.area || '-'}</td><td>${rupiah(x.nominal_bayar)}</td><td><span class="badge ${x.status === 'lunas' ? 'green' : x.status === 'kurang' ? 'orange' : 'red'}">${x.status}</span></td></tr>`).join('');
@@ -85,3 +88,37 @@ async function initMaster() {
   });
   await loadWarga();
 }
+
+function toggleAudit(){ document.getElementById('auditWrap')?.classList.toggle('hide'); }
+async function loadAudit(){
+  const el = document.getElementById('auditRows');
+  if(!el) return;
+  const data = await api('/api/audit-trail');
+  el.innerHTML = data.map(x => `<tr><td>${new Date(x.createdAt).toLocaleString('id-ID')}</td><td>${x.nama}<br><small>${x.role}</small></td><td>${x.aksi}</td><td>${x.modul}</td><td>${x.detail || '-'}</td></tr>`).join('');
+}
+
+async function initUsers(){
+  const form = document.getElementById('formUser');
+  form.addEventListener('submit', async e => {
+    e.preventDefault();
+    const body = Object.fromEntries(new FormData(e.target).entries());
+    body.aktif = e.target.aktif.checked;
+    const method = body.id ? 'PUT' : 'POST';
+    const url = body.id ? `/api/users/${body.id}` : '/api/users';
+    if(!body.password) delete body.password;
+    delete body.id;
+    await api(url,{method,headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+    e.target.reset(); e.target.aktif.checked = true; document.getElementById('userId').value=''; await loadUsers();
+  });
+  role.addEventListener('change', () => areaWrap.classList.toggle('hide', role.value !== 'petugas'));
+  await loadUsers();
+}
+
+async function loadUsers(){
+  const data = await api('/api/users');
+  userRows.innerHTML = data.map(u => `<tr><td>${u.nama}<br><small>${u.jabatan || '-'}</small></td><td>${u.username}</td><td>${u.role}</td><td>${u.area || '-'}</td><td>${u.aktif ? '<span class="success-text">Aktif</span>' : '<span class="danger-text">Nonaktif</span>'}</td><td><button class="mini-btn" onclick='editUser(${JSON.stringify(u)})'>Edit</button> <button class="mini-btn" onclick="deleteUser('${u._id}')">Hapus</button></td></tr>`).join('');
+}
+function editUser(u){
+  userId.value = u._id; formUser.nama.value=u.nama; formUser.username.value=u.username; formUser.password.value=''; formUser.jabatan.value=u.jabatan||''; formUser.role.value=u.role; formUser.area.value=u.area||'-'; formUser.aktif.checked=!!u.aktif; areaWrap.classList.toggle('hide', u.role !== 'petugas');
+}
+async function deleteUser(id){ if(confirm('Hapus user ini?')){ await api(`/api/users/${id}`,{method:'DELETE'}); await loadUsers(); } }

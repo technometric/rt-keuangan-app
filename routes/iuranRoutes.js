@@ -7,6 +7,7 @@ const ParameterIwk = require('../models/ParameterIwk');
 const { requireRole } = require('../middleware/auth');
 const { bagiIwk, statusIwk } = require('../utils/iwk');
 const { buatTransaksiKas } = require('../utils/kas');
+const { tulisAudit } = require('../utils/audit');
 const router = express.Router();
 
 const storage = multer.diskStorage({
@@ -62,8 +63,9 @@ router.post('/', requireRole('admin','petugas'), upload.single('foto_bayar'), as
   for (const [jenis_kas, debet] of Object.entries(rincian)) {
     if (debet > 0) await buatTransaksiKas({ jenis_kas, sumber: 'iwk', ref_id: iuran._id, keterangan: `IWK ${warga.nama} - ${iuran.bulan}/${iuran.tahun}`, tanggal, debet, kredit: 0, dibuat_oleh: req.session.user.id });
   }
+  await tulisAudit(req, 'CREATE', 'Iuran IWK', `Input IWK ${warga.nama} nominal ${nominal}`);
   res.json(iuran);
 });
 
-router.delete('/:id', requireRole('admin'), async (req, res) => { await IuranWajib.findByIdAndDelete(req.params.id); res.json({ message: 'Iuran dihapus. Catatan: transaksi kas otomatis belum dibalik di starter ini.' }); });
+router.delete('/:id', requireRole('admin'), async (req, res) => { await IuranWajib.findByIdAndDelete(req.params.id); await tulisAudit(req, 'DELETE', 'Iuran IWK', `Hapus iuran ${req.params.id}`); res.json({ message: 'Iuran dihapus. Catatan: transaksi kas otomatis belum dibalik di starter ini.' }); });
 module.exports = router;

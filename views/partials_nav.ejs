@@ -1,15 +1,23 @@
 <div class="sidebar">
   <div class="logo">SIKERT<span style="color:#f08200">.</span></div>
-  <div style="color:#9ca3af;margin-bottom:18px">Halo, <b style="color:white"><%= user.nama %></b><br><small><%= user.role %> <%= user.area && user.area !== '-' ? '('+user.area+')' : '' %></small></div>
+  <% if (user) { %>
+    <div style="color:#9ca3af;margin-bottom:18px">Halo, <b style="color:white"><%= user.nama %></b><br><small><%= user.role %> <%= user.area && user.area !== '-' ? '('+user.area+')' : '' %></small></div>
+  <% } else { %>
+    <div style="color:#9ca3af;margin-bottom:18px">Informasi umum<br><small>Keuangan RT</small></div>
+  <% } %>
   <div class="nav">
-    <% if(user.role === 'admin'){ %>
-      <a href="/admin/dashboard">Dashboard</a><a href="/admin/master">Master Data</a><a href="/admin/iuran">Iuran IWK</a><a href="/admin/kas">Transaksi Kas</a><a href="/umum/dashboard">Tampilan Umum</a>
-    <% } else if(user.role === 'petugas'){ %>
-      <a href="/petugas/dashboard">Input IWK</a><a href="/umum/dashboard">Tampilan Umum</a>
+    <% if(user && user.role === 'admin'){ %>
+      <a href="/admin/dashboard">Dashboard</a><a href="/admin/master">Master Data</a><a href="/admin/users">Management User</a><a href="/admin/iuran">Iuran IWK</a><a href="/admin/kas">Transaksi Kas</a><a href="/">Tampilan Umum</a>
+    <% } else if(user && user.role === 'petugas'){ %>
+      <a href="/petugas/dashboard">Input IWK</a><a href="/">Tampilan Umum</a>
     <% } else { %>
-      <a href="/umum/dashboard">Dashboard Umum</a>
+      <a href="/">Dashboard Umum</a><a href="/login?next=/petugas/dashboard">Login Petugas</a><a href="/admin">Admin</a>
     <% } %>
-    <a href="#" onclick="logout()">Logout</a>
+    <% if(user){ %><a href="#" onclick="logout()">Logout</a><% } %>
   </div>
+  <div id="appVersion" class="version-box">SIKERT</div>
 </div>
-<script>async function logout(){await fetch('/api/auth/logout',{method:'POST'});location.href='/login'}</script>
+<script>
+async function logout(){await fetch('/api/auth/logout',{method:'POST'});location.href='/'}
+fetch('/api/info/version').then(r=>r.json()).then(d=>{const el=document.getElementById('appVersion'); if(el) el.textContent=`${d.name} v${d.version}`}).catch(()=>{});
+</script>
