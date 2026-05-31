@@ -2,6 +2,7 @@ const express = require('express');
 const TransaksiKas = require('../models/TransaksiKas');
 const { requireRole } = require('../middleware/auth');
 const { buatTransaksiKas, saldoSemuaKas } = require('../utils/kas');
+const { tulisAudit } = require('../utils/audit');
 const router = express.Router();
 
 router.get('/saldo', requireRole('admin','petugas','umum'), async (req, res) => res.json(await saldoSemuaKas()));
@@ -14,7 +15,9 @@ router.post('/', requireRole('admin','petugas'), async (req, res) => {
   const { jenis_kas, keterangan, tanggal, tipe, nominal } = req.body;
   const debet = tipe === 'debet' ? Number(nominal || 0) : 0;
   const kredit = tipe === 'kredit' ? Number(nominal || 0) : 0;
-  res.json(await buatTransaksiKas({ jenis_kas, sumber: 'manual', keterangan, tanggal: tanggal ? new Date(tanggal) : new Date(), debet, kredit, dibuat_oleh: req.session.user.id }));
+  const trx = await buatTransaksiKas({ jenis_kas, sumber: 'manual', keterangan, tanggal: tanggal ? new Date(tanggal) : new Date(), debet, kredit, dibuat_oleh: req.session.user.id });
+  await tulisAudit(req, 'CREATE', 'Transaksi Kas', `${jenis_kas} ${tipe} ${nominal}`);
+  res.json(trx);
 });
-router.delete('/:id', requireRole('admin'), async (req, res) => { await TransaksiKas.findByIdAndDelete(req.params.id); res.json({ message: 'Transaksi dihapus' }); });
+router.delete('/:id', requireRole('admin'), async (req, res) => { await TransaksiKas.findByIdAndDelete(req.params.id); await tulisAudit(req, 'DELETE', 'Transaksi Kas', `Hapus transaksi ${req.params.id}`); res.json({ message: 'Transaksi dihapus' }); });
 module.exports = router;
