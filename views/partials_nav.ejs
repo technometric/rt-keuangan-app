@@ -1,0 +1,15 @@
+<div class="sidebar">
+  <div class="logo">SIKERT<span style="color:#f08200">.</span></div>
+  <div style="color:#9ca3af;margin-bottom:18px">Halo, <b style="color:white"><%= user.nama %></b><br><small><%= user.role %> <%= user.area && user.area !== '-' ? '('+user.area+')' : '' %></small></div>
+  <div class="nav">
+    <% if(user.role === 'admin'){ %>
+      <a href="/admin/dashboard">Dashboard</a><a href="/admin/master">Master Data</a><a href="/admin/iuran">Iuran IWK</a><a href="/admin/kas">Transaksi Kas</a><a href="/umum/dashboard">Tampilan Umum</a>
+    <% } else if(user.role === 'petugas'){ %>
+      <a href="/petugas/dashboard">Input IWK</a><a href="/umum/dashboard">Tampilan Umum</a>
+    <% } else { %>
+      <a href="/umum/dashboard">Dashboard Umum</a>
+    <% } %>
+    <a href="#" onclick="logout()">Logout</a>
+  </div>
+</div>
+<script>async function logout(){await fetch('/api/auth/logout',{method:'POST'});location.href='/login'}</script>
