@@ -11,9 +11,16 @@ async function api(url, options = {}) {
 }
 
 async function loadSaldo() {
-  const saldo = await api(apiBase('/api/kas/saldo').replace('/api/public/api/kas/saldo','/api/public/saldo'));
+  let saldo = await api(apiBase('/api/kas/saldo').replace('/api/public/api/kas/saldo','/api/public/saldo'));
   const el = document.getElementById('saldoGrid');
-  el.innerHTML = Object.entries(saldo).map(([k,v]) => `<div class="card"><h3>${nice(k)}</h3><div class="money">${rupiah(v)}</div></div>`).join('');
+  if (!el) return;
+
+  if (isPublic() && Array.isArray(window.PUBLIC_SALDO_KEYS)) {
+    saldo = Object.fromEntries(window.PUBLIC_SALDO_KEYS.map(k => [k, saldo[k] || 0]));
+  }
+
+  const cardClass = isPublic() ? 'public-money-card' : 'card';
+  el.innerHTML = Object.entries(saldo).map(([k,v]) => `<div class="${cardClass}"><h3>${nice(k)}</h3><div class="money">${rupiah(v)}</div></div>`).join('');
 }
 
 async function loadWarga(selectId = 'warga') {
@@ -122,3 +129,10 @@ function editUser(u){
   userId.value = u._id; formUser.nama.value=u.nama; formUser.username.value=u.username; formUser.password.value=''; formUser.jabatan.value=u.jabatan||''; formUser.role.value=u.role; formUser.area.value=u.area||'-'; formUser.aktif.checked=!!u.aktif; areaWrap.classList.toggle('hide', u.role !== 'petugas');
 }
 async function deleteUser(id){ if(confirm('Hapus user ini?')){ await api(`/api/users/${id}`,{method:'DELETE'}); await loadUsers(); } }
+
+function togglePublicMenu(){ document.getElementById('publicMenu')?.classList.toggle('hide'); }
+document.addEventListener('click', e => {
+  const menu = document.getElementById('publicMenu');
+  const btn = document.querySelector('.hamburger');
+  if(menu && btn && !menu.contains(e.target) && !btn.contains(e.target)) menu.classList.add('hide');
+});

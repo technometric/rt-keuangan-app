@@ -1,1 +1,82 @@
-<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Dashboard Umum</title><link rel="stylesheet" href="/css/style.css"></head><body><div class="app"><%- include('../partials_nav') %><main class="main"><div class="topbar"><div><div class="title">Informasi Keuangan RT</div><div class="sub">Saldo kas dan pembayaran IWK bulan berjalan</div></div><div class="actions"><a class="btn" href="/login?next=/petugas/dashboard">Login Petugas</a></div></div><div id="saldoGrid" class="grid"></div><div class="panel"><h2>Pembayaran IWK Bulan Ini</h2><table><thead><tr><th>Warga</th><th>Rumah</th><th>Area</th><th>Nominal</th><th>Status</th></tr></thead><tbody id="iwkRows"></tbody></table></div></main></div><script>window.PUBLIC_DASHBOARD=<%= publicMode ? 'true' : 'false' %></script><script src="/js/app.js"></script><script>loadSaldo();loadIwkBulanIni()</script></body></html>
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
+  <title>Informasi Keuangan RT02</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body class="public-body">
+  <header class="public-header">
+    <div class="public-brand">
+      <div class="rt-badge">RT02</div>
+      <div>
+        <div class="public-title">Informasi Keuangan RT02</div>
+        <div class="public-subtitle">Ringkasan saldo dan pembayaran IWK warga</div>
+      </div>
+    </div>
+
+    <div class="public-menu-wrap">
+      <button class="hamburger" type="button" onclick="togglePublicMenu()" aria-label="Buka menu">
+        <span></span><span></span><span></span>
+      </button>
+      <div id="publicMenu" class="public-menu hide">
+        <a href="/login?next=/petugas/dashboard">Login Petugas</a>
+        <a href="/login?next=/admin/dashboard">Login Admin</a>
+      </div>
+    </div>
+  </header>
+
+  <main class="public-main">
+    <section class="hero-card">
+      <div>
+        <p class="eyebrow">Dashboard Warga</p>
+        <h1>Keuangan RT transparan, rapi, dan mudah dipantau.</h1>
+        <p class="hero-desc">Saldo yang ditampilkan adalah informasi kas utama untuk warga. Data pembayaran IWK mengikuti bulan berjalan.</p>
+      </div>
+    </section>
+
+    <section>
+      <div class="section-head">
+        <div>
+          <h2>Informasi Keuangan</h2>
+          <p>Pos yang ditampilkan untuk umum.</p>
+        </div>
+      </div>
+      <div id="saldoGrid" class="public-grid"></div>
+    </section>
+
+    <section class="public-panel">
+      <div class="section-head compact">
+        <div>
+          <h2>Pembayaran IWK Bulan Ini</h2>
+          <p>Daftar warga yang sudah tercatat pada bulan berjalan.</p>
+        </div>
+      </div>
+      <div class="table-scroll public-table-scroll">
+        <table class="public-table">
+          <thead>
+            <tr>
+              <th>Warga</th>
+              <th>Rumah</th>
+              <th>Area</th>
+              <th>Nominal</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody id="iwkRows"></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <footer class="public-footer">Aplikasi Keuangan RT02</footer>
+
+  <script>
+    window.PUBLIC_DASHBOARD = <%= publicMode ? 'true' : 'false' %>;
+    window.PUBLIC_SALDO_KEYS = ['kas_rt','kas_sosial','kas_donasi','tabungan_sampah','santunan_kematian','danus'];
+  </script>
+  <script src="/js/app.js"></script>
+  <script>loadSaldo();loadIwkBulanIni();</script>
+</body>
+</html>

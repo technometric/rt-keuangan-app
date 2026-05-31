@@ -3,7 +3,13 @@ const IuranWajib = require('../models/IuranWajib');
 const { saldoSemuaKas } = require('../utils/kas');
 const router = express.Router();
 
-router.get('/saldo', async (req, res) => res.json(await saldoSemuaKas()));
+router.get('/saldo', async (req, res) => {
+  const saldo = await saldoSemuaKas();
+  const tampilUmum = ['kas_rt','kas_sosial','kas_donasi','tabungan_sampah','santunan_kematian','danus'];
+  const filtered = {};
+  tampilUmum.forEach(k => filtered[k] = saldo[k] || 0);
+  res.json(filtered);
+});
 router.get('/iuran-wajib', async (req, res) => {
   const { bulan, tahun } = req.query;
   const filter = {};
