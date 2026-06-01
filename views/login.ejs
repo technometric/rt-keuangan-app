@@ -7,8 +7,9 @@ async function login(){
   const d=await r.json();
   if(!r.ok){msg.textContent=d.message;return}
   if(nextUrl) return location.href=nextUrl;
-  if(d.user.role==='admin') return location.href='/admin';
-  if(d.user.role==='petugas') return location.href='/petugas';
+  if(d.redirect) return location.href=d.redirect;
+  if(d.user.role==='admin') return location.href='/admin/dashboard';
+  if(d.user.role==='petugas') return location.href='/petugas/dashboard';
   location.href='/';
 }
 </script>
