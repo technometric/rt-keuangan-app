@@ -363,7 +363,7 @@ async function loadLaporanKeuangan(){
   document.getElementById('reportTotalTransaksi').textContent = Number(data.transaksi?.length || 0).toLocaleString('id-ID');
   const rwEl = document.getElementById('reportIuranRwGabungan');
   if (rwEl) rwEl.textContent = rupiah(data.iuranRwGabungan || 0);
-  document.getElementById('reportTransaksiNote').textContent = `Menampilkan transaksi periode ${data.meta?.periodeLabel || ''}. Pos uang sampah, satpam dan kas RW disembunyikan dari laporan.`;
+  document.getElementById('reportTransaksiNote').textContent = `Menampilkan transaksi periode ${data.meta?.periodeLabel || ''}.`;
 
   const saldoGrid = document.getElementById('reportSaldoGrid');
   saldoGrid.innerHTML = Object.entries(data.saldo || {}).map(([k,v]) => `
