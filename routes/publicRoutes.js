@@ -1,6 +1,7 @@
 const express = require('express');
 const IuranWajib = require('../models/IuranWajib');
 const WajibIwk = require('../models/WajibIwk');
+const ParameterIwk = require('../models/ParameterIwk');
 const { saldoSemuaKas } = require('../utils/kas');
 const router = express.Router();
 
@@ -48,6 +49,25 @@ router.get('/iuran-tahun', async (req, res) => {
     return { no: idx + 1, warga: w, bulan };
   });
   res.json({ tahun, data });
+});
+
+
+router.get('/iwk-progress', async (req, res) => {
+  const now = new Date();
+  const bulan = Number(req.query.bulan || now.getMonth() + 1);
+  const tahun = Number(req.query.tahun || now.getFullYear());
+  const param = await ParameterIwk.findOne({ aktif: true }).sort({ createdAt: -1 }).lean();
+  const totalIwk = Number(param?.total_iwk || 0);
+  const totalWarga = await WajibIwk.countDocuments({ aktif: { $ne: false } });
+  const agg = await IuranWajib.aggregate([
+    { $match: { bulan, tahun } },
+    { $group: { _id: null, pendapatan: { $sum: '$nominal_bayar' }, jumlahBayar: { $sum: { $cond: [{ $gt: ['$nominal_bayar', 0] }, 1, 0] } } } }
+  ]);
+  const pendapatan = Number(agg[0]?.pendapatan || 0);
+  const jumlahBayar = Number(agg[0]?.jumlahBayar || 0);
+  const target = totalIwk * totalWarga;
+  const persen = target > 0 ? Math.round((pendapatan / target) * 100) : 0;
+  res.json({ bulan, tahun, total_iwk: totalIwk, total_warga: totalWarga, jumlah_bayar: jumlahBayar, pendapatan, target, persen });
 });
 
 module.exports = router;

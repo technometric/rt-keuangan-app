@@ -5,7 +5,7 @@ const apiBase = path => isPublic() ? `/api/public${path}` : path;
 const bulanNama = ['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agu','Sep','Okt','Nov','Des'];
 let iwkYear = new Date().getFullYear();
 let iwkFilter = 'belum_bayar';
-let iwkPeriodMode = 'all';
+let iwkPeriodMode = String(new Date().getMonth() + 1);
 let iwkYearData = [];
 
 function labelStatus(s){
@@ -34,6 +34,21 @@ async function loadSaldo() {
 
   const cardClass = isPublic() ? 'public-money-card' : 'card';
   el.innerHTML = Object.entries(saldo).map(([k,v]) => `<div class="${cardClass}"><h3>${nice(k)}</h3><div class="money">${rupiah(v)}</div></div>`).join('');
+}
+
+async function loadIwkProgress(targetId = 'iwkProgressCard') {
+  const el = document.getElementById(targetId);
+  if (!el) return;
+  const now = new Date();
+  const data = await api(`/api/public/iwk-progress?bulan=${now.getMonth()+1}&tahun=${now.getFullYear()}`);
+  const rumus = `${rupiah(data.pendapatan)} / (${rupiah(data.total_iwk)} × ${data.total_warga})`;
+  el.innerHTML = `
+    <div class="progress-title">Pendapatan IWK Bulan Berjalan</div>
+    <div class="progress-money">${rupiah(data.pendapatan)} <span>/ ${rupiah(data.target)}</span></div>
+    <div class="progress-note">${rumus}</div>
+    <div class="progress-bar"><i style="width:${Math.min(100, Number(data.persen||0))}%"></i></div>
+    <div class="progress-note">${data.jumlah_bayar} warga sudah bayar · Target ${data.persen}%</div>
+  `;
 }
 
 async function loadWarga(selectId = 'warga') {
@@ -121,12 +136,23 @@ function bindIwkForm() {
     const msg = document.getElementById('msg');
     try {
       const result = await fetch('/api/iuran-wajib', { method: 'POST', body: new FormData(form) }).then(async r => { const d = await r.json(); if(!r.ok) throw new Error(d.message); return d; });
-      form.reset(); setupBulanMulai(); await setDefaultNominalIwk(); msg.textContent = result.message || 'Pembayaran berhasil disimpan.'; await loadIwk();
+      form.reset(); setupBulanMulai(); await setDefaultNominalIwk(); msg.textContent = result.message || 'Pembayaran berhasil disimpan.'; await loadIwk(); await loadPetugasBulanIniTotal();
     } catch (err) { msg.textContent = err.message; }
   });
 }
 
-async function initPetugasIwk() { setupBulanMulai(); await setDefaultNominalIwk(); await loadWarga(); bindIwkForm(); await loadIwk(); }
+async function initPetugasIwk() { setupBulanMulai(); await setDefaultNominalIwk(); await loadWarga(); bindIwkForm(); await loadIwk(); await loadPetugasBulanIniTotal(); }
+
+
+async function loadPetugasBulanIniTotal(){
+  const el = document.getElementById('petugasIwkTotalBulanIni');
+  if(!el) return;
+  const d = new Date();
+  const data = await api(`/api/iuran-wajib?bulan=${d.getMonth()+1}&tahun=${d.getFullYear()}`);
+  const total = data.reduce((sum,x)=>sum + Number(x.nominal_bayar || 0),0);
+  const count = data.filter(x => Number(x.nominal_bayar || 0) > 0).length;
+  el.innerHTML = `<div class="progress-title">Total Penagihan Bulan Ini</div><div class="progress-money">${rupiah(total)}</div><div class="progress-note">${count} pembayaran tercatat pada ${bulanNama[d.getMonth()]} ${d.getFullYear()}</div>`;
+}
 
 async function initKas() {
   const form = document.getElementById('formKas');
@@ -281,7 +307,8 @@ document.addEventListener('click', e => {
 
 async function initIwkYearView(){
   const sel = document.getElementById('iwkPeriodMode');
-  if(sel) sel.value = 'all';
+  iwkPeriodMode = String(new Date().getMonth() + 1);
+  if(sel) sel.value = iwkPeriodMode;
   await loadIwkYear();
 }
 function setIwkPeriodMode(value){ iwkPeriodMode = value; renderIwkYear(); }

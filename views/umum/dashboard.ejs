@@ -33,13 +33,14 @@
         </div>
       </div>
       <div id="saldoGrid" class="public-grid"></div>
+      <div id="iwkProgressCard" class="iwk-progress-card"></div>
     </section>
 
     <section class="public-panel">
       <div class="section-head compact year-head">
         <div>
           <h2>Status Pembayaran IWK</h2>
-          <p>Default menampilkan warga yang belum bayar.</p>
+          <p>Default menampilkan bulan berjalan dan warga yang belum bayar.</p>
         </div>
         <div class="year-control stacked-control">
           <select id="iwkPeriodMode" class="select mini-select" onchange="setIwkPeriodMode(this.value)">
@@ -76,6 +77,6 @@
     window.PUBLIC_SALDO_KEYS = ['kas_rt','kas_sosial','kas_donasi','tabungan_sampah','santunan_kematian','danus'];
   </script>
   <script src="/js/app.js"></script>
-  <script>loadSaldo();initIwkYearView();</script>
+  <script>loadSaldo();loadIwkProgress();initIwkYearView();</script>
 </body>
 </html>
