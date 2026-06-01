@@ -1,0 +1,37 @@
+<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Backup & Maintenance</title><link rel="stylesheet" href="/css/style.css"></head><body><div class="app"><%- include('../partials_nav') %><main class="main"><div class="title">Backup & Maintenance</div><div class="sub">Fitur khusus admin untuk mengamankan dan mereset data aplikasi.</div>
+
+<div class="panel"><h2>Backup Data</h2><p class="sub">Download seluruh data penting aplikasi dalam format JSON. Simpan file ini sebelum melakukan restore atau reset.</p><div class="actions"><a class="btn" href="/api/maintenance/backup">Download Backup JSON</a></div></div>
+
+<div class="panel danger-zone"><h2>Restore Data</h2><p class="sub">Restore akan mengganti data aplikasi dengan isi file backup. Gunakan hanya file backup dari aplikasi ini.</p><form id="formRestore" enctype="multipart/form-data"><input class="input" type="file" name="backup" accept="application/json,.json" required><input class="input" name="confirm" placeholder="Ketik RESTORE untuk konfirmasi" required><button class="btn orange">Restore Data</button></form><div id="restoreMsg" class="form-msg"></div></div>
+
+<div class="panel danger-zone"><h2>Reset Semua Data Kas</h2><p class="sub">Menghapus seluruh transaksi kas. Data warga, user, parameter IWK, dan riwayat IWK tidak ikut dihapus.</p><form id="formResetKas"><input class="input" name="confirm" placeholder="Ketik RESET KAS untuk konfirmasi" required><button class="btn danger">Reset Data Kas</button></form><div id="resetKasMsg" class="form-msg"></div></div>
+
+</main></div><script src="/js/app.js"></script><script>
+const restoreForm = document.getElementById('formRestore');
+restoreForm?.addEventListener('submit', async e => {
+  e.preventDefault();
+  const msg = document.getElementById('restoreMsg');
+  try {
+    const res = await fetch('/api/maintenance/restore', { method: 'POST', body: new FormData(restoreForm) });
+    const data = await res.json();
+    if(!res.ok) throw new Error(data.message || 'Restore gagal');
+    msg.textContent = data.message;
+    alert(data.message);
+  } catch(err) { msg.textContent = err.message; }
+});
+const resetForm = document.getElementById('formResetKas');
+resetForm?.addEventListener('submit', async e => {
+  e.preventDefault();
+  if(!confirm('Yakin reset semua data transaksi kas? Pastikan sudah backup dulu.')) return;
+  const msg = document.getElementById('resetKasMsg');
+  try {
+    const body = Object.fromEntries(new FormData(resetForm).entries());
+    const res = await fetch('/api/maintenance/reset-kas', { method: 'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) });
+    const data = await res.json();
+    if(!res.ok) throw new Error(data.message || 'Reset gagal');
+    msg.textContent = data.message;
+    alert(data.message);
+    resetForm.reset();
+  } catch(err) { msg.textContent = err.message; }
+});
+</script></body></html>

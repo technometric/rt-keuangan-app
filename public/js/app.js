@@ -346,3 +346,80 @@ function renderIwkYear(){
     return `<div class="iwk-year-card"><div class="iwk-person"><strong>${row.no || ''}. ${row.warga?.nama || '-'}</strong><span>${row.warga?.no_rumah || '-'} · ${row.warga?.area || '-'}</span></div><div class="month-row ${iwkPeriodMode !== 'all' ? 'single-month' : ''}">${cells}</div></div>`;
   }).join('');
 }
+
+// v1.3.0 Laporan Keuangan PDF/PNG
+async function loadLaporanKeuangan(){
+  const card = document.getElementById('laporanKeuanganCard');
+  if(!card) return;
+  const periode = document.getElementById('reportPeriode')?.value || '1';
+  const showBelum = document.getElementById('showBelumBayar')?.checked ? 'true' : 'false';
+  const d = new Date();
+  const data = await api(`/api/laporan-keuangan/data?periode=${periode}&bulan=${d.getMonth()+1}&tahun=${d.getFullYear()}&showBelumBayar=${showBelum}`);
+  document.getElementById('reportPeriodText').textContent = data.meta?.periodeLabel || '-';
+  document.getElementById('reportGeneratedAt').textContent = data.meta?.generatedAt || new Date().toLocaleString('id-ID');
+  document.getElementById('reportTotalSaldo').textContent = rupiah(data.totalSaldo || 0);
+  document.getElementById('reportTotalDebet').textContent = rupiah(data.totalDebet || 0);
+  document.getElementById('reportTotalKredit').textContent = rupiah(data.totalKredit || 0);
+  document.getElementById('reportTotalTransaksi').textContent = Number(data.transaksi?.length || 0).toLocaleString('id-ID');
+  const rwEl = document.getElementById('reportIuranRwGabungan');
+  if (rwEl) rwEl.textContent = rupiah(data.iuranRwGabungan || 0);
+  document.getElementById('reportTransaksiNote').textContent = `Menampilkan transaksi periode ${data.meta?.periodeLabel || ''}. Pos uang sampah, satpam dan kas RW disembunyikan dari laporan.`;
+
+  const saldoGrid = document.getElementById('reportSaldoGrid');
+  saldoGrid.innerHTML = Object.entries(data.saldo || {}).map(([k,v]) => `
+    <div class="report-saldo-card"><span>${nice(k)}</span><strong>${rupiah(v)}</strong></div>
+  `).join('');
+
+  const rows = document.getElementById('reportTransaksiRows');
+  const tx = data.transaksi || [];
+  rows.innerHTML = tx.length ? tx.map(x => `
+    <tr>
+      <td>${new Date(x.tanggal).toLocaleDateString('id-ID')}</td>
+      <td>${nice(x.jenis_kas)}</td>
+      <td>${x.keterangan || '-'}</td>
+      <td>${rupiah(x.debet)}</td>
+      <td>${rupiah(x.kredit)}</td>
+    </tr>
+  `).join('') : `<tr><td colspan="5" class="empty-cell">Belum ada transaksi pada periode ini.</td></tr>`;
+
+  const belumSection = document.getElementById('reportBelumBayarSection');
+  const belumRows = document.getElementById('reportBelumBayarRows');
+  if(showBelum === 'true'){
+    belumSection.classList.remove('hide');
+    const belum = data.belumBayar || [];
+    belumRows.innerHTML = belum.length ? belum.map((w,i)=>`<tr><td>${i+1}</td><td>${w.nama}</td><td>${w.no_rumah}</td><td>${w.area || '-'}</td></tr>`).join('') : `<tr><td colspan="4" class="empty-cell">Semua warga sudah ada catatan pembayaran bulan ini.</td></tr>`;
+  }else{
+    belumSection.classList.add('hide');
+    belumRows.innerHTML = '';
+  }
+}
+
+function laporanQueryString(){
+  const periode = document.getElementById('reportPeriode')?.value || '1';
+  const showBelum = document.getElementById('showBelumBayar')?.checked ? 'true' : 'false';
+  const d = new Date();
+  return `periode=${periode}&bulan=${d.getMonth()+1}&tahun=${d.getFullYear()}&showBelumBayar=${showBelum}`;
+}
+async function generateIuranRwBulanan(){
+  if(!confirm('Buat/perbarui 1 transaksi pengeluaran Kas RT untuk iuran sampah, satpam dan kas RW bulan sebelumnya?')) return;
+  const d = new Date();
+  const data = await api(`/api/laporan-keuangan/generate-iuran-rw?bulan=${d.getMonth()+1}&tahun=${d.getFullYear()}`, {method:'POST'});
+  alert(`${data.message}\nNominal: ${rupiah(data.total || 0)}\nPeriode: ${data.periodeText || '-'}`);
+  await loadLaporanKeuangan();
+}
+function downloadLaporanPdf(){
+  location.href = `/api/laporan-keuangan/pdf?${laporanQueryString()}`;
+}
+async function downloadLaporanPng(){
+  const target = document.getElementById('laporanKeuanganCard');
+  if(!target) return;
+  if(typeof html2canvas === 'undefined'){
+    alert('Library PNG belum termuat. Pastikan koneksi internet aktif, lalu refresh halaman. Alternatif sementara gunakan PDF.');
+    return;
+  }
+  const canvas = await html2canvas(target, { scale: 2, backgroundColor: '#ffffff', useCORS: true });
+  const a = document.createElement('a');
+  a.download = `laporan-keuangan-rt02-${new Date().toISOString().slice(0,10)}.png`;
+  a.href = canvas.toDataURL('image/png');
+  a.click();
+}
