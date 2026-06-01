@@ -3,12 +3,6 @@ const bcrypt = require('bcryptjs');
 const User = require('../models/User');
 const router = express.Router();
 
-function getDefaultRedirect(user) {
-  if (user.role === 'admin') return '/admin/dashboard';
-  if (user.role === 'petugas') return '/petugas/dashboard';
-  return '/';
-}
-
 router.post('/login', async (req, res) => {
   const { username, password } = req.body;
   const user = await User.findOne({ username, aktif: true });

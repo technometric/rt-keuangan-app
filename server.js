@@ -27,7 +27,7 @@ app.use(session({
 // Route halaman admin dibuat eksplisit agar tidak pernah ketabrak halaman umum/root.
 // Penting: blok ini harus berada SEBELUM app.use('/', pageRoutes).
 app.get(['/admin', '/admin/'], (req, res) => {
-  if (!req.session.user) return res.redirect('/admin/login');
+  if (!req.session.user) return res.render('login', { next: '/admin/dashboard', loginMode: 'admin' });
   if (req.session.user.role !== 'admin') return res.redirect('/');
   return res.redirect('/admin/dashboard');
 });

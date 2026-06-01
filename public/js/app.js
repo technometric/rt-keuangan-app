@@ -5,7 +5,7 @@ const apiBase = path => isPublic() ? `/api/public${path}` : path;
 const bulanNama = ['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agu','Sep','Okt','Nov','Des'];
 let iwkYear = new Date().getFullYear();
 let iwkFilter = 'belum_bayar';
-let iwkPeriodMode = String(new Date().getMonth() + 1);
+let iwkPeriodMode = 'all';
 let iwkYearData = [];
 
 function labelStatus(s){
@@ -41,44 +41,47 @@ async function loadWarga(selectId = 'warga') {
   const el = document.getElementById(selectId);
   if (el) el.innerHTML = data.map(w => `<option value="${w._id}">${w.no_rumah} - ${w.nama} (${w.area})</option>`).join('');
   const rows = document.getElementById('wargaRows');
-  if (rows) rows.innerHTML = data.map((w,i) => `<tr><td>${i+1}</td><td>${w.no_rumah}</td><td>${w.nama}</td><td>${w.area}</td><td>${w.hp || '-'}</td></tr>`).join('');
+  if (rows) rows.innerHTML = data.map((w,i) => `<tr><td>${i+1}</td><td>${w.no_rumah}</td><td>${w.nama}</td><td>${w.area}</td><td>${w.hp || '-'}</td><td class="actions-cell"><button class="mini-btn" onclick='editWarga(${JSON.stringify(w)})'>Edit</button> <button class="mini-btn danger" onclick="deleteWarga('${w._id}')">Hapus</button></td></tr>`).join('');
+}
+
+function editWarga(w){
+  const form = document.getElementById('formWarga');
+  if(!form) return;
+  form.warga_id.value = w._id || '';
+  form.nama.value = w.nama || '';
+  form.nik.value = w.nik || '';
+  form.hp.value = w.hp || '';
+  form.no_rumah.value = w.no_rumah || '';
+  form.area.value = w.area || 'utara';
+  const title = document.getElementById('formWargaTitle');
+  if(title) title.textContent = 'Edit Warga Wajib IWK';
+  const btn = document.getElementById('btnWargaSubmit');
+  if(btn) btn.textContent = 'Update Warga';
+  form.scrollIntoView({behavior:'smooth', block:'center'});
+}
+
+function resetWargaForm(){
+  const form = document.getElementById('formWarga');
+  if(!form) return;
+  form.reset();
+  form.warga_id.value = '';
+  const title = document.getElementById('formWargaTitle');
+  if(title) title.textContent = 'Tambah Warga Wajib IWK';
+  const btn = document.getElementById('btnWargaSubmit');
+  if(btn) btn.textContent = 'Tambah Warga';
+}
+
+async function deleteWarga(id){
+  if(!confirm('Hapus warga ini dari daftar wajib IWK?')) return;
+  await api(`/api/wajib-iwk/${id}`, {method:'DELETE'});
+  await loadWarga();
 }
 
 async function loadIwk() {
-  const m = document.getElementById('riwayatBulan')?.value || (new Date().getMonth()+1);
-  const y = document.getElementById('riwayatTahun')?.value || new Date().getFullYear();
-  const data = await api(`/api/iuran-wajib?bulan=${m}&tahun=${y}`);
+  const data = await api('/api/iuran-wajib');
   const el = document.getElementById('riwayat');
   if (!el) return;
-  el.innerHTML = data.map(x => `<tr><td>${new Date(x.tanggal).toLocaleDateString('id-ID')}</td><td>${x.warga?.nama || '-'}</td><td>${rupiah(x.nominal_bayar)}<br><small>${bulanNama[(x.bulan || 1)-1]} ${x.tahun || ''}</small></td><td><span class="badge outline ${statusClass(x.status)}">${labelStatus(x.status)}</span></td><td>${x.catatan_petugas || '-'}</td><td><button class="mini-btn" onclick="editIwkRiwayat('${x._id}', ${Number(x.nominal_bayar || 0)}, decodeURIComponent('${encodeURIComponent(x.catatan_petugas || '-')}'))">Edit</button></td></tr>`).join('');
-}
-
-async function editIwkRiwayat(id, nominal, catatan){
-  const nominalBaru = prompt('Nominal pembayaran:', nominal);
-  if(nominalBaru === null) return;
-  const catatanBaru = prompt('Catatan petugas:', catatan === '-' ? '' : catatan);
-  if(catatanBaru === null) return;
-  await api(`/api/iuran-wajib/${id}`, { method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ nominal_bayar: Number(nominalBaru || 0), catatan_petugas: catatanBaru }) });
-  await loadIwk();
-  alert('Riwayat berhasil diperbarui');
-}
-
-function printRiwayatPetugas(){
-  const m = document.getElementById('riwayatBulan')?.value || (new Date().getMonth()+1);
-  const y = document.getElementById('riwayatTahun')?.value || new Date().getFullYear();
-  window.open(`/api/export/riwayat-iwk-petugas/pdf?bulan=${m}&tahun=${y}`, '_blank');
-}
-
-function setupRiwayatFilter(){
-  const b = document.getElementById('riwayatBulan');
-  const t = document.getElementById('riwayatTahun');
-  if(!b || !t) return;
-  const now = new Date();
-  b.innerHTML = bulanNama.map((x,i)=>`<option value="${i+1}">${x}</option>`).join('');
-  b.value = now.getMonth()+1;
-  t.value = now.getFullYear();
-  b.addEventListener('change', loadIwk);
-  t.addEventListener('change', loadIwk);
+  el.innerHTML = data.map(x => `<tr><td>${new Date(x.tanggal).toLocaleDateString('id-ID')}</td><td>${x.warga?.nama || '-'}</td><td>${rupiah(x.nominal_bayar)}<br><small>${bulanNama[(x.bulan || 1)-1]} ${x.tahun || ''}</small></td><td><span class="badge outline ${statusClass(x.status)}">${labelStatus(x.status)}</span></td><td>${x.petugas?.nama || x.catatan_petugas || '-'}</td></tr>`).join('');
 }
 
 async function loadIwkBulanIni() {
@@ -123,21 +126,63 @@ function bindIwkForm() {
   });
 }
 
-async function initPetugasIwk() { setupBulanMulai(); setupRiwayatFilter(); await setDefaultNominalIwk(); await loadWarga(); bindIwkForm(); await loadIwk(); }
+async function initPetugasIwk() { setupBulanMulai(); await setDefaultNominalIwk(); await loadWarga(); bindIwkForm(); await loadIwk(); }
 
 async function initKas() {
-  document.getElementById('formKas').addEventListener('submit', async e => {
+  const form = document.getElementById('formKas');
+  if(!form) return;
+  form.addEventListener('submit', async e => {
     e.preventDefault();
     const body = Object.fromEntries(new FormData(e.target).entries());
-    await api('/api/kas', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) });
-    e.target.reset(); await loadKasRows();
+    const id = body.kas_id;
+    delete body.kas_id;
+    const method = id ? 'PUT' : 'POST';
+    const url = id ? `/api/kas/${id}` : '/api/kas';
+    await api(url, { method, headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) });
+    resetKasForm();
+    await loadKasRows();
   });
   await loadKasRows();
 }
 
 async function loadKasRows() {
   const data = await api('/api/kas');
-  kasRows.innerHTML = data.map(x => `<tr><td>${new Date(x.tanggal).toLocaleDateString('id-ID')}</td><td>${nice(x.jenis_kas)}</td><td>${x.keterangan}</td><td>${rupiah(x.debet)}</td><td>${rupiah(x.kredit)}</td><td>${rupiah(x.saldo)}</td></tr>`).join('');
+  kasRows.innerHTML = data.map(x => {
+    const tipe = Number(x.debet || 0) > 0 ? 'debet' : 'kredit';
+    const nominal = Number(x.debet || 0) > 0 ? x.debet : x.kredit;
+    return `<tr><td>${new Date(x.tanggal).toLocaleDateString('id-ID')}</td><td>${nice(x.jenis_kas)}</td><td>${x.keterangan}</td><td>${rupiah(x.debet)}</td><td>${rupiah(x.kredit)}</td><td>${rupiah(x.saldo)}</td><td class="actions-cell"><button class="mini-btn" onclick='editKas(${JSON.stringify({...x, tipe, nominal})})'>Edit</button> <button class="mini-btn danger" onclick="deleteKas('${x._id}')">Hapus</button></td></tr>`;
+  }).join('');
+}
+
+function editKas(x){
+  const form = document.getElementById('formKas');
+  if(!form) return;
+  form.kas_id.value = x._id || '';
+  form.jenis_kas.value = x.jenis_kas || 'kas_rt';
+  form.tipe.value = x.tipe || 'debet';
+  form.nominal.value = Number(x.nominal || 0);
+  form.keterangan.value = x.keterangan || '';
+  if(form.tanggal && x.tanggal) form.tanggal.value = new Date(x.tanggal).toISOString().slice(0,10);
+  const title = document.getElementById('formKasTitle');
+  if(title) title.textContent = 'Edit Transaksi Kas';
+  const btn = document.getElementById('btnKasSubmit');
+  if(btn) btn.textContent = 'Update Transaksi';
+  form.scrollIntoView({behavior:'smooth', block:'center'});
+}
+function resetKasForm(){
+  const form = document.getElementById('formKas');
+  if(!form) return;
+  form.reset();
+  form.kas_id.value = '';
+  const title = document.getElementById('formKasTitle');
+  if(title) title.textContent = 'Input Transaksi Kas Manual';
+  const btn = document.getElementById('btnKasSubmit');
+  if(btn) btn.textContent = 'Simpan Transaksi';
+}
+async function deleteKas(id){
+  if(!confirm('Hapus transaksi kas ini? Saldo akan dihitung ulang otomatis.')) return;
+  await api(`/api/kas/${id}`, {method:'DELETE'});
+  await loadKasRows();
 }
 
 function syncParamTotal(){
@@ -170,8 +215,13 @@ async function initMaster() {
   formWarga.addEventListener('submit', async e => {
     e.preventDefault();
     const body = Object.fromEntries(new FormData(e.target).entries());
-    await api('/api/wajib-iwk', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) });
-    e.target.reset(); await loadWarga();
+    const id = body.warga_id;
+    delete body.warga_id;
+    const method = id ? 'PUT' : 'POST';
+    const url = id ? `/api/wajib-iwk/${id}` : '/api/wajib-iwk';
+    await api(url, { method, headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) });
+    resetWargaForm();
+    await loadWarga();
   });
   await loadWarga();
   await loadParameterList();
@@ -231,7 +281,7 @@ document.addEventListener('click', e => {
 
 async function initIwkYearView(){
   const sel = document.getElementById('iwkPeriodMode');
-  if(sel) sel.value = String(new Date().getMonth() + 1);
+  if(sel) sel.value = 'all';
   await loadIwkYear();
 }
 function setIwkPeriodMode(value){ iwkPeriodMode = value; renderIwkYear(); }
