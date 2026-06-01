@@ -1,0 +1,706 @@
+[
+  {
+    "nama": "AI",
+    "nik": "",
+    "hp": "",
+    "no_rumah": "A2 NO 2",
+    "area": "utara",
+    "aktif": true
+  },
+  {
+    "nama": "ERWIN . S",
+    "nik": "",
+    "hp": "",
+    "no_rumah": "A2 NO 3",
+    "area": "utara",
+    "aktif": true
+  },
+  {
+    "nama": "RUBBY",
+    "nik": "",
+    "hp": "",
+    "no_rumah": "A2 NO 4",
+    "area": "utara",
+    "aktif": true
+  },
+  {
+    "nama": "RAHMAT HIDAYAT",
+    "nik": "",
+    "hp": "",
+    "no_rumah": "A2 NO 5",
+    "area": "utara",
+    "aktif": true
+  },
+  {
+    "nama": "DADANG",
+    "nik": "",
+    "hp": "",
+    "no_rumah": "A2 NO 6",
+    "area": "utara",
+    "aktif": true
+  },
+  {
+    "nama": "FERRY",
+    "nik": "",
+    "hp": "",
+    "no_rumah": "A2 NO 7",
+    "area": "utara",
+    "aktif": true
+  },
+  {
+    "nama": "SUPARDI",
+    "nik": "",
+    "hp": "",
+    "no_rumah": "A2 NO 8",
+    "area": "utara",
+    "aktif": true
+  },
+  {
+    "nama": "H. ONDI ROCHENDI",
+    "nik": "",
+    "hp": "",
+    "no_rumah": "D2 NO 1",
+    "area": "utara",
+    "aktif": true
+  },
+  {
+    "nama": "KUSNENDAR",
+    "nik": "",
+    "hp": "",
+    "no_rumah": "D2 NO 2",
+    "area": "utara",
+    "aktif": true
+  },
+  {
+    "nama": "YANA RUSTANDI",
+    "nik": "",
+    "hp": "",
+    "no_rumah": "D2 NO 3",
+    "area": "utara",
+    "aktif": true
+  },
+  {
+    "nama": "YAN BARNAS",
+    "nik": "",
+    "hp": "",
+    "no_rumah": "D2 NO 5",
+    "area": "utara",
+    "aktif": true
+  },
+  {
+    "nama": "HJ. AUM HANARUM",
+    "nik": "",
+    "hp": "",
+    "no_rumah": "D2 NO 6",
+    "area": "utara",
+    "aktif": true
+  },
+  {
+    "nama": "DODY",
+    "nik": "",
+    "hp": "",
+    "no_rumah": "D2 NO 7",
+    "area": "utara",
+    "aktif": true
+  },
+  {
+    "nama": "WAHYU HERI MULYONO",
+    "nik": "",
+    "hp": "",
+    "no_rumah": "D2 NO 8",
+    "area": "utara",
+    "aktif": true
+  },
+  {
+    "nama": "Tedi",
+    "nik": "",
+    "hp": "",
+    "no_rumah": "D2 NO 9",
+    "area": "utara",
+    "aktif": true
+  },
+  {
+    "nama": "Gilang",
+    "nik": "",
+    "hp": "",
+    "no_rumah": "D2 NO 10",
+    "area": "utara",
+    "aktif": true
+  },
+  {
+    "nama": "SONI",
+    "nik": "",
+    "hp": "",
+    "no_rumah": "D2 NO 11",
+    "area": "utara",
+    "aktif": true
+  },
+  {
+    "nama": "EPI USMAN/BU AAN",
+    "nik": "",
+    "hp": "",
+    "no_rumah": "D2 NO 12",
+    "area": "utara",
+    "aktif": true
+  },
+  {
+    "nama": "IBU RUSMANI",
+    "nik": "",
+    "hp": "",
+    "no_rumah": "D2 NO 13",
+    "area": "utara",
+    "aktif": true
+  },
+  {
+    "nama": "AGUS PERMADI GUMILAR",
+    "nik": "",
+    "hp": "",
+    "no_rumah": "D2 NO 14",
+    "area": "utara",
+    "aktif": true
+  },
+  {
+    "nama": "ROHMAN",
+    "nik": "",
+    "hp": "",
+    "no_rumah": "D2 NO 15",
+    "area": "utara",
+    "aktif": true
+  },
+  {
+    "nama": "ASEP (Konfeksi)",
+    "nik": "",
+    "hp": "",
+    "no_rumah": "D2 NO 16",
+    "area": "utara",
+    "aktif": true
+  },
+  {
+    "nama": "TEGUH AJIMANTO",
+    "nik": "",
+    "hp": "",
+    "no_rumah": "D2 NO 17",
+    "area": "utara",
+    "aktif": true
+  },
+  {
+    "nama": "ALROJI",
+    "nik": "",
+    "hp": "",
+    "no_rumah": "D2 NO 18",
+    "area": "utara",
+    "aktif": true
+  },
+  {
+    "nama": "Taufik Matrial",
+    "nik": "",
+    "hp": "",
+    "no_rumah": "D2 NO 19",
+    "area": "utara",
+    "aktif": true
+  },
+  {
+    "nama": "EDY JUNAEDI",
+    "nik": "",
+    "hp": "",
+    "no_rumah": "D2 NO 20",
+    "area": "utara",
+    "aktif": true
+  },
+  {
+    "nama": "Dafa",
+    "nik": "",
+    "hp": "",
+    "no_rumah": "D2 NO 21",
+    "area": "utara",
+    "aktif": true
+  },
+  {
+    "nama": "DEDI K",
+    "nik": "",
+    "hp": "",
+    "no_rumah": "D2 NO 22",
+    "area": "utara",
+    "aktif": true
+  },
+  {
+    "nama": "Dodi Kurnia",
+    "nik": "",
+    "hp": "",
+    "no_rumah": "D2 NO 23",
+    "area": "utara",
+    "aktif": true
+  },
+  {
+    "nama": "META",
+    "nik": "",
+    "hp": "",
+    "no_rumah": "D2 NO 24",
+    "area": "utara",
+    "aktif": true
+  },
+  {
+    "nama": "FERRY",
+    "nik": "",
+    "hp": "",
+    "no_rumah": "K2 NO 1",
+    "area": "tengah",
+    "aktif": true
+  },
+  {
+    "nama": "H. ALIMUNAR",
+    "nik": "",
+    "hp": "",
+    "no_rumah": "K2 NO 2",
+    "area": "tengah",
+    "aktif": true
+  },
+  {
+    "nama": "ATEP SULAEMAN",
+    "nik": "",
+    "hp": "",
+    "no_rumah": "K2 NO 3",
+    "area": "tengah",
+    "aktif": true
+  },
+  {
+    "nama": "SAEPUDIN",
+    "nik": "",
+    "hp": "",
+    "no_rumah": "K2 NO 4",
+    "area": "tengah",
+    "aktif": true
+  },
+  {
+    "nama": "RATNA",
+    "nik": "",
+    "hp": "",
+    "no_rumah": "K2 NO 5",
+    "area": "tengah",
+    "aktif": true
+  },
+  {
+    "nama": "ADONG KHADAM",
+    "nik": "",
+    "hp": "",
+    "no_rumah": "K2 NO 6",
+    "area": "tengah",
+    "aktif": true
+  },
+  {
+    "nama": "ACHMAD DUDI MARWAN",
+    "nik": "",
+    "hp": "",
+    "no_rumah": "K2 NO 7",
+    "area": "tengah",
+    "aktif": true
+  },
+  {
+    "nama": "TASIR",
+    "nik": "",
+    "hp": "",
+    "no_rumah": "K2 NO 8",
+    "area": "tengah",
+    "aktif": true
+  },
+  {
+    "nama": "JAMES P NABABAN",
+    "nik": "",
+    "hp": "",
+    "no_rumah": "K2 NO 9",
+    "area": "tengah",
+    "aktif": true
+  },
+  {
+    "nama": "FABIANUS MADRUNO",
+    "nik": "",
+    "hp": "",
+    "no_rumah": "K2 NO 10",
+    "area": "tengah",
+    "aktif": true
+  },
+  {
+    "nama": "PARDIO",
+    "nik": "",
+    "hp": "",
+    "no_rumah": "K2 NO 11",
+    "area": "tengah",
+    "aktif": true
+  },
+  {
+    "nama": "PRATIKNO HERI SUBROTO",
+    "nik": "",
+    "hp": "",
+    "no_rumah": "K2 NO 12",
+    "area": "tengah",
+    "aktif": true
+  },
+  {
+    "nama": "BEJA UTAMA",
+    "nik": "",
+    "hp": "",
+    "no_rumah": "K2 NO 13",
+    "area": "tengah",
+    "aktif": true
+  },
+  {
+    "nama": "IRJON",
+    "nik": "",
+    "hp": "",
+    "no_rumah": "K2 NO 14",
+    "area": "tengah",
+    "aktif": true
+  },
+  {
+    "nama": "SION OCRO SINURAT",
+    "nik": "",
+    "hp": "",
+    "no_rumah": "K2 NO 15",
+    "area": "tengah",
+    "aktif": true
+  },
+  {
+    "nama": "UGI",
+    "nik": "",
+    "hp": "",
+    "no_rumah": "K2 NO 16",
+    "area": "tengah",
+    "aktif": true
+  },
+  {
+    "nama": "GALUH",
+    "nik": "",
+    "hp": "",
+    "no_rumah": "K2 NO 17",
+    "area": "tengah",
+    "aktif": true
+  },
+  {
+    "nama": "MURDIYANTO",
+    "nik": "",
+    "hp": "",
+    "no_rumah": "K2 NO 18",
+    "area": "tengah",
+    "aktif": true
+  },
+  {
+    "nama": "Djoni / K Lan",
+    "nik": "",
+    "hp": "",
+    "no_rumah": "K2 NO 19",
+    "area": "tengah",
+    "aktif": true
+  },
+  {
+    "nama": "T SABIDEN",
+    "nik": "",
+    "hp": "",
+    "no_rumah": "K2 NO 20",
+    "area": "tengah",
+    "aktif": true
+  },
+  {
+    "nama": "DR. DADAN BAHRUL HAYAT",
+    "nik": "",
+    "hp": "",
+    "no_rumah": "K2 NO 21",
+    "area": "tengah",
+    "aktif": true
+  },
+  {
+    "nama": "MULYONO",
+    "nik": "",
+    "hp": "",
+    "no_rumah": "K2 NO 22",
+    "area": "tengah",
+    "aktif": true
+  },
+  {
+    "nama": "DINDIN YUSTIAWAN",
+    "nik": "",
+    "hp": "",
+    "no_rumah": "K2 NO 23",
+    "area": "tengah",
+    "aktif": true
+  },
+  {
+    "nama": "TULUS RAHMAT IRAWAN",
+    "nik": "",
+    "hp": "",
+    "no_rumah": "K2 NO 24",
+    "area": "tengah",
+    "aktif": true
+  },
+  {
+    "nama": "HADMAN",
+    "nik": "",
+    "hp": "",
+    "no_rumah": "K2 NO 25",
+    "area": "selatan",
+    "aktif": true
+  },
+  {
+    "nama": "JALALUDIN",
+    "nik": "",
+    "hp": "",
+    "no_rumah": "K2 NO 27",
+    "area": "selatan",
+    "aktif": true
+  },
+  {
+    "nama": "RAMDAN",
+    "nik": "",
+    "hp": "",
+    "no_rumah": "K2 NO 29",
+    "area": "selatan",
+    "aktif": true
+  },
+  {
+    "nama": "IJA GUNAWAN",
+    "nik": "",
+    "hp": "",
+    "no_rumah": "K2 NO 31",
+    "area": "selatan",
+    "aktif": true
+  },
+  {
+    "nama": "PURNAMA",
+    "nik": "",
+    "hp": "",
+    "no_rumah": "K2 NO 32",
+    "area": "selatan",
+    "aktif": true
+  },
+  {
+    "nama": "INDRA SUHERMAN",
+    "nik": "",
+    "hp": "",
+    "no_rumah": "K2 NO 34",
+    "area": "selatan",
+    "aktif": true
+  },
+  {
+    "nama": "SOBIRIN",
+    "nik": "",
+    "hp": "",
+    "no_rumah": "K2 NO 35",
+    "area": "selatan",
+    "aktif": true
+  },
+  {
+    "nama": "YUDI NARYANTO",
+    "nik": "",
+    "hp": "",
+    "no_rumah": "K2 NO 36",
+    "area": "selatan",
+    "aktif": true
+  },
+  {
+    "nama": "MUMUH (air)",
+    "nik": "",
+    "hp": "",
+    "no_rumah": "K2 NO 37",
+    "area": "selatan",
+    "aktif": true
+  },
+  {
+    "nama": "NOVAN",
+    "nik": "",
+    "hp": "",
+    "no_rumah": "K2 NO 38",
+    "area": "selatan",
+    "aktif": true
+  },
+  {
+    "nama": "ASEP AHADIAT",
+    "nik": "",
+    "hp": "",
+    "no_rumah": "K2 NO 39",
+    "area": "selatan",
+    "aktif": true
+  },
+  {
+    "nama": "IDA",
+    "nik": "",
+    "hp": "",
+    "no_rumah": "K2 NO 40",
+    "area": "selatan",
+    "aktif": true
+  },
+  {
+    "nama": "TATANG RAMLAN",
+    "nik": "",
+    "hp": "",
+    "no_rumah": "K2 NO 41",
+    "area": "selatan",
+    "aktif": true
+  },
+  {
+    "nama": "NANO",
+    "nik": "",
+    "hp": "",
+    "no_rumah": "K2 NO 42",
+    "area": "selatan",
+    "aktif": true
+  },
+  {
+    "nama": "AFIF",
+    "nik": "",
+    "hp": "",
+    "no_rumah": "K2 NO 43",
+    "area": "selatan",
+    "aktif": true
+  },
+  {
+    "nama": "IJA GUNAWAN",
+    "nik": "",
+    "hp": "",
+    "no_rumah": "K2 NO 44",
+    "area": "selatan",
+    "aktif": true
+  },
+  {
+    "nama": "ARIS KUNAEFI",
+    "nik": "",
+    "hp": "",
+    "no_rumah": "K2 NO 45",
+    "area": "selatan",
+    "aktif": true
+  },
+  {
+    "nama": "DASEP SACHDIAT",
+    "nik": "",
+    "hp": "",
+    "no_rumah": "K2 NO 46",
+    "area": "selatan",
+    "aktif": true
+  },
+  {
+    "nama": "IWAN SETIAWAN",
+    "nik": "",
+    "hp": "",
+    "no_rumah": "K2 NO 48",
+    "area": "selatan",
+    "aktif": true
+  },
+  {
+    "nama": "H. EDED KOSTAMAN",
+    "nik": "",
+    "hp": "",
+    "no_rumah": "K2 NO 49",
+    "area": "selatan",
+    "aktif": true
+  },
+  {
+    "nama": "RYAN ANDRIANSYAH",
+    "nik": "",
+    "hp": "",
+    "no_rumah": "K2 NO 50",
+    "area": "selatan",
+    "aktif": true
+  },
+  {
+    "nama": "WAWAN HERMAWAN",
+    "nik": "",
+    "hp": "",
+    "no_rumah": "K2 NO 51",
+    "area": "selatan",
+    "aktif": true
+  },
+  {
+    "nama": "FIRMAN",
+    "nik": "",
+    "hp": "",
+    "no_rumah": "K2 NO 52",
+    "area": "selatan",
+    "aktif": true
+  },
+  {
+    "nama": "H. AHMAD HAERUDIN",
+    "nik": "",
+    "hp": "",
+    "no_rumah": "K2 NO 53",
+    "area": "selatan",
+    "aktif": true
+  },
+  {
+    "nama": "HENDRA",
+    "nik": "",
+    "hp": "",
+    "no_rumah": "K2 NO 54",
+    "area": "selatan",
+    "aktif": true
+  },
+  {
+    "nama": "HIKMAT SURYA PERMANA",
+    "nik": "",
+    "hp": "",
+    "no_rumah": "K2 NO 55",
+    "area": "selatan",
+    "aktif": true
+  },
+  {
+    "nama": "ABDUL LATIF",
+    "nik": "",
+    "hp": "",
+    "no_rumah": "K2 NO 56",
+    "area": "selatan",
+    "aktif": true
+  },
+  {
+    "nama": "BASO KUMIS",
+    "nik": "",
+    "hp": "",
+    "no_rumah": "K2 NO 57",
+    "area": "selatan",
+    "aktif": true
+  },
+  {
+    "nama": "UTUT WIRYANDI",
+    "nik": "",
+    "hp": "",
+    "no_rumah": "K2 NO 58",
+    "area": "selatan",
+    "aktif": true
+  },
+  {
+    "nama": "ELVIRA",
+    "nik": "",
+    "hp": "",
+    "no_rumah": "K2 NO 59",
+    "area": "selatan",
+    "aktif": true
+  },
+  {
+    "nama": "TONI",
+    "nik": "",
+    "hp": "",
+    "no_rumah": "K2 NO 60",
+    "area": "selatan",
+    "aktif": true
+  },
+  {
+    "nama": "WAWAN SETIAWAN",
+    "nik": "",
+    "hp": "",
+    "no_rumah": "K2 NO 61",
+    "area": "selatan",
+    "aktif": true
+  },
+  {
+    "nama": "JULIMAR",
+    "nik": "",
+    "hp": "",
+    "no_rumah": "K2 NO 62",
+    "area": "selatan",
+    "aktif": true
+  },
+  {
+    "nama": "ELGI/FINO",
+    "nik": "",
+    "hp": "",
+    "no_rumah": "K2 NO 63",
+    "area": "selatan",
+    "aktif": true
+  }
+]

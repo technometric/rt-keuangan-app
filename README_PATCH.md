@@ -1,32 +1,37 @@
-# Patch v1.2.0 - IWK Multi Bulan + Tampilan Umum Ringkas
+# Patch v1.2.1 - RT Keuangan App
 
 ## Isi patch
-1. Input IWK bisa untuk 1 bulan atau beberapa bulan sekaligus.
-2. Nominal otomatis dibagi per periode bulan.
-   - Contoh bayar 60.000 untuk 2 bulan: bulan pertama 30.000, bulan kedua 30.000.
-   - Contoh bayar 45.000 untuk 2 bulan: bulan pertama 30.000, bulan kedua 15.000.
-3. Setiap periode otomatis membuat transaksi kas sesuai komponen IWK.
-4. Halaman umum tanpa header atas.
-5. Menu garis tiga dibuat floating di kanan atas.
-6. Status pembayaran IWK full 1 tahun mode ringkas warna.
-7. Filter tampilan: semua, lunas, kurang, belum lunas.
-8. Tampilan umum lebih nyaman untuk HP.
-9. Versi aplikasi naik ke 1.2.0.
+1. Import data warga wajib IWK RT02 sebanyak 88 data.
+2. Menu publik diubah menjadi titik tiga kecil floating di kanan bawah.
+3. Tulisan kredensial `Admin: admin / admin123` di halaman login dihapus.
+4. Kotak tulisan `RT02` pada hero dashboard umum dihilangkan agar lebih hemat ruang.
+5. Versi aplikasi dinaikkan ke `1.2.1`.
 
 ## Cara pasang
-Copy semua folder/file dalam patch ini ke root project `rt-keuangan-app`, replace file lama.
+Copy/replace semua folder dan file di patch ini ke folder project.
 
-Lalu restart aplikasi:
-
-```bash
-pm2 restart rt-keuangan
-```
-
-atau jika masih mode dev:
+Lalu jalankan:
 
 ```bash
+npm install
+npm run import:warga
 npm run dev
 ```
 
-## Catatan
-Tidak perlu menjalankan `npm run seed` ulang.
+Atau jika sudah pakai PM2:
+
+```bash
+npm run import:warga
+pm2 restart rt-keuangan
+```
+
+## Catatan import warga
+Script import memakai `no_rumah` sebagai kunci unik sederhana.
+Jika `no_rumah` sudah ada, data akan di-update.
+Jika belum ada, data akan ditambahkan.
+
+Data warga berada di:
+
+```txt
+data/wajib-iwk-rt02.json
+```

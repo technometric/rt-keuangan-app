@@ -1,12 +1,13 @@
 {
   "name": "rt-keuangan-app",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "start": "node server.js",
     "dev": "nodemon server.js",
-    "seed": "node seed.js"
+    "seed": "node seed.js",
+    "import:warga": "node scripts/import-wajib-iwk.js"
   },
   "keywords": [],
   "author": "",
