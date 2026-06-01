@@ -10,8 +10,11 @@ const IuranWajibSchema = new mongoose.Schema({
   jam: { type: String, default: '' },
   bulan: { type: Number, required: true },
   tahun: { type: Number, required: true },
-  status: { type: String, enum: ['lunas', 'kurang', 'belum_bayar'], required: true },
+  status: { type: String, enum: ['bayar', 'lunas', 'kurang', 'belum_bayar'], required: true },
   catatan_petugas: { type: String, default: '' },
+  grup_pembayaran: { type: String, default: '' },
+  bulan_ke: { type: Number, default: 1 },
+  total_bulan: { type: Number, default: 1 },
   rincian: {
     uang_satpam: { type: Number, default: 0 },
     uang_sampah: { type: Number, default: 0 },
@@ -21,5 +24,7 @@ const IuranWajibSchema = new mongoose.Schema({
     santunan_kematian: { type: Number, default: 0 }
   }
 }, { timestamps: true });
+
+IuranWajibSchema.index({ warga: 1, bulan: 1, tahun: 1 });
 
 module.exports = mongoose.model('IuranWajib', IuranWajibSchema);

@@ -1,23 +1,26 @@
-<div class="sidebar">
-  <div class="logo">SIKERT<span style="color:#f08200">.</span></div>
-  <% if (user) { %>
-    <div style="color:#9ca3af;margin-bottom:18px">Halo, <b style="color:white"><%= user.nama %></b><br><small><%= user.role %> <%= user.area && user.area !== '-' ? '('+user.area+')' : '' %></small></div>
-  <% } else { %>
-    <div style="color:#9ca3af;margin-bottom:18px">Informasi umum<br><small>Keuangan RT</small></div>
-  <% } %>
-  <div class="nav">
+<div class="floating-menu-wrap private-menu-wrap">
+  <button class="kebab private-kebab" type="button" onclick="togglePrivateMenu()" aria-label="Buka menu">
+    <span></span><span></span><span></span>
+  </button>
+  <div id="privateMenu" class="public-menu floating-public-menu hide">
     <% if(user && user.role === 'admin'){ %>
-      <a href="/admin/dashboard">Dashboard</a><a href="/admin/master">Master Data</a><a href="/admin/users">Management User</a><a href="/admin/iuran">Iuran IWK</a><a href="/admin/kas">Transaksi Kas</a><a href="/">Tampilan Umum</a>
+      <a href="/admin/dashboard">Dashboard</a>
+      <a href="/admin/master">Master Data</a>
+      <a href="/admin/users">Management User</a>
+      <a href="/admin/iuran">Iuran IWK</a>
+      <a href="/admin/kas">Transaksi Kas</a>
+      <a href="/">Tampilan Umum</a>
     <% } else if(user && user.role === 'petugas'){ %>
-      <a href="/petugas/dashboard">Input IWK</a><a href="/">Tampilan Umum</a>
-    <% } else { %>
-      <a href="/">Dashboard Umum</a><a href="/login?next=/petugas/dashboard">Login Petugas</a><a href="/admin">Admin</a>
+      <a href="/petugas/dashboard">Input IWK</a>
+      <a href="/">Tampilan Umum</a>
     <% } %>
     <% if(user){ %><a href="#" onclick="logout()">Logout</a><% } %>
+    <small id="appVersion" class="menu-version">SIKERT</small>
   </div>
   <div id="appVersion" class="version-box">SIKERT</div>
 </div>
 <script>
 async function logout(){await fetch('/api/auth/logout',{method:'POST'});location.href='/'}
+function togglePrivateMenu(){ document.getElementById('privateMenu')?.classList.toggle('hide'); }
 fetch('/api/info/version').then(r=>r.json()).then(d=>{const el=document.getElementById('appVersion'); if(el) el.textContent=`${d.name} v${d.version}`}).catch(()=>{});
 </script>

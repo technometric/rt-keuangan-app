@@ -24,8 +24,21 @@ app.use(session({
   cookie: { maxAge: 1000 * 60 * 60 * 8 }
 }));
 
-app.use('/', require('./routes/pageRoutes'));
+// Route halaman admin dibuat eksplisit agar tidak pernah ketabrak halaman umum/root.
+// Penting: blok ini harus berada SEBELUM app.use('/', pageRoutes).
+app.get(['/admin', '/admin/'], (req, res) => {
+  if (!req.session.user) return res.render('login', { next: '/admin/dashboard', loginMode: 'admin' });
+  if (req.session.user.role !== 'admin') return res.redirect('/');
+  return res.redirect('/admin/dashboard');
+});
+
+app.get(['/admin/login', '/admin/login/'], (req, res) => {
+  if (req.session.user && req.session.user.role === 'admin') return res.redirect('/admin/dashboard');
+  return res.render('login', { next: '/admin/dashboard', loginMode: 'admin' });
+});
+
 app.use('/api/auth', require('./routes/authRoutes'));
+app.use('/', require('./routes/pageRoutes'));
 app.use('/api/wajib-iwk', require('./routes/wajibIwkRoutes'));
 app.use('/api/parameter-iwk', require('./routes/parameterRoutes'));
 app.use('/api/iuran-wajib', require('./routes/iuranRoutes'));
