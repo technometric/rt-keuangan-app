@@ -4,12 +4,12 @@ const router = express.Router();
 
 router.get('/', (req, res) => res.render('umum/dashboard', { user: req.session.user || null, publicMode: true }));
 router.get('/login', (req, res) => res.render('login', { next: req.query.next || '' }));
-router.get('/admin', (req, res) => {
+router.get(['/admin', '/admin/'], (req, res) => {
   if (!req.session.user) return res.redirect('/login?next=/admin/dashboard');
   if (req.session.user.role !== 'admin') return res.redirect('/');
   return res.redirect('/admin/dashboard');
 });
-router.get('/petugas', (req, res) => {
+router.get(['/petugas', '/petugas/'], (req, res) => {
   if (!req.session.user) return res.redirect('/login?next=/petugas/dashboard');
   if (req.session.user.role !== 'petugas') return res.redirect('/');
   return res.redirect('/petugas/dashboard');

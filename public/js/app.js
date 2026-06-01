@@ -5,7 +5,7 @@ const apiBase = path => isPublic() ? `/api/public${path}` : path;
 const bulanNama = ['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agu','Sep','Okt','Nov','Des'];
 let iwkYear = new Date().getFullYear();
 let iwkFilter = 'belum_bayar';
-let iwkPeriodMode = 'all';
+let iwkPeriodMode = String(new Date().getMonth() + 1);
 let iwkYearData = [];
 
 function labelStatus(s){
@@ -45,10 +45,40 @@ async function loadWarga(selectId = 'warga') {
 }
 
 async function loadIwk() {
-  const data = await api('/api/iuran-wajib');
+  const m = document.getElementById('riwayatBulan')?.value || (new Date().getMonth()+1);
+  const y = document.getElementById('riwayatTahun')?.value || new Date().getFullYear();
+  const data = await api(`/api/iuran-wajib?bulan=${m}&tahun=${y}`);
   const el = document.getElementById('riwayat');
   if (!el) return;
-  el.innerHTML = data.map(x => `<tr><td>${new Date(x.tanggal).toLocaleDateString('id-ID')}</td><td>${x.warga?.nama || '-'}</td><td>${rupiah(x.nominal_bayar)}<br><small>${bulanNama[(x.bulan || 1)-1]} ${x.tahun || ''}</small></td><td><span class="badge outline ${statusClass(x.status)}">${labelStatus(x.status)}</span></td><td>${x.petugas?.nama || x.catatan_petugas || '-'}</td></tr>`).join('');
+  el.innerHTML = data.map(x => `<tr><td>${new Date(x.tanggal).toLocaleDateString('id-ID')}</td><td>${x.warga?.nama || '-'}</td><td>${rupiah(x.nominal_bayar)}<br><small>${bulanNama[(x.bulan || 1)-1]} ${x.tahun || ''}</small></td><td><span class="badge outline ${statusClass(x.status)}">${labelStatus(x.status)}</span></td><td>${x.catatan_petugas || '-'}</td><td><button class="mini-btn" onclick="editIwkRiwayat('${x._id}', ${Number(x.nominal_bayar || 0)}, decodeURIComponent('${encodeURIComponent(x.catatan_petugas || '-')}'))">Edit</button></td></tr>`).join('');
+}
+
+async function editIwkRiwayat(id, nominal, catatan){
+  const nominalBaru = prompt('Nominal pembayaran:', nominal);
+  if(nominalBaru === null) return;
+  const catatanBaru = prompt('Catatan petugas:', catatan === '-' ? '' : catatan);
+  if(catatanBaru === null) return;
+  await api(`/api/iuran-wajib/${id}`, { method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ nominal_bayar: Number(nominalBaru || 0), catatan_petugas: catatanBaru }) });
+  await loadIwk();
+  alert('Riwayat berhasil diperbarui');
+}
+
+function printRiwayatPetugas(){
+  const m = document.getElementById('riwayatBulan')?.value || (new Date().getMonth()+1);
+  const y = document.getElementById('riwayatTahun')?.value || new Date().getFullYear();
+  window.open(`/api/export/riwayat-iwk-petugas/pdf?bulan=${m}&tahun=${y}`, '_blank');
+}
+
+function setupRiwayatFilter(){
+  const b = document.getElementById('riwayatBulan');
+  const t = document.getElementById('riwayatTahun');
+  if(!b || !t) return;
+  const now = new Date();
+  b.innerHTML = bulanNama.map((x,i)=>`<option value="${i+1}">${x}</option>`).join('');
+  b.value = now.getMonth()+1;
+  t.value = now.getFullYear();
+  b.addEventListener('change', loadIwk);
+  t.addEventListener('change', loadIwk);
 }
 
 async function loadIwkBulanIni() {
@@ -93,7 +123,7 @@ function bindIwkForm() {
   });
 }
 
-async function initPetugasIwk() { setupBulanMulai(); await setDefaultNominalIwk(); await loadWarga(); bindIwkForm(); await loadIwk(); }
+async function initPetugasIwk() { setupBulanMulai(); setupRiwayatFilter(); await setDefaultNominalIwk(); await loadWarga(); bindIwkForm(); await loadIwk(); }
 
 async function initKas() {
   document.getElementById('formKas').addEventListener('submit', async e => {
@@ -201,7 +231,7 @@ document.addEventListener('click', e => {
 
 async function initIwkYearView(){
   const sel = document.getElementById('iwkPeriodMode');
-  if(sel) sel.value = 'all';
+  if(sel) sel.value = String(new Date().getMonth() + 1);
   await loadIwkYear();
 }
 function setIwkPeriodMode(value){ iwkPeriodMode = value; renderIwkYear(); }

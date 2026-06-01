@@ -7,7 +7,8 @@ const WajibIwk = require('../models/WajibIwk');
 const ParameterIwk = require('../models/ParameterIwk');
 const { requireRole } = require('../middleware/auth');
 const { bagiIwk, statusIwk } = require('../utils/iwk');
-const { buatTransaksiKas } = require('../utils/kas');
+const { buatTransaksiKas, hitungUlangSaldo } = require('../utils/kas');
+const TransaksiKas = require('../models/TransaksiKas');
 const { tulisAudit } = require('../utils/audit');
 const router = express.Router();
 
@@ -92,6 +93,56 @@ router.post('/', requireRole('admin','petugas'), upload.single('foto_bayar'), as
 
   await tulisAudit(req, 'CREATE', 'Iuran IWK', `Input IWK ${warga.nama} nominal ${nominalTotal} untuk ${jumlahBulan} bulan`);
   res.json({ message: 'Pembayaran berhasil disimpan', jumlah_data: hasilIuran.length, data: hasilIuran });
+});
+
+
+
+router.put('/:id', requireRole('admin','petugas'), async (req, res) => {
+  const iuran = await IuranWajib.findById(req.params.id).populate('warga');
+  if (!iuran) return res.status(404).json({ message: 'Riwayat IWK tidak ditemukan' });
+  if (req.session.user.role === 'petugas' && String(iuran.petugas) !== String(req.session.user.id)) {
+    return res.status(403).json({ message: 'Petugas hanya bisa edit riwayat yang dibuat sendiri' });
+  }
+
+  const param = await getParam();
+  const nominalBaru = Number(req.body.nominal_bayar ?? iuran.nominal_bayar);
+  const catatanBaru = req.body.catatan_petugas ?? iuran.catatan_petugas;
+  const totalIwk = Number(param.total_iwk || 0);
+
+  if (nominalBaru < totalIwk && !catatanBaru) {
+    return res.status(400).json({ message: 'Catatan wajib diisi jika bayar kurang / belum bayar' });
+  }
+
+  const rincianBaru = bagiIwk(nominalBaru, param);
+  const jenisTerdampak = new Set(Object.keys(iuran.rincian?.toObject?.() || iuran.rincian || {}).concat(Object.keys(rincianBaru)));
+
+  await TransaksiKas.deleteMany({ sumber: 'iwk', ref_id: iuran._id });
+
+  iuran.nominal_bayar = nominalBaru;
+  iuran.catatan_petugas = catatanBaru;
+  iuran.status = statusIwk(nominalBaru, totalIwk);
+  iuran.rincian = rincianBaru;
+  await iuran.save();
+
+  for (const [jenis_kas, debet] of Object.entries(rincianBaru)) {
+    if (debet > 0) {
+      await buatTransaksiKas({
+        jenis_kas,
+        sumber: 'iwk',
+        ref_id: iuran._id,
+        keterangan: `IWK ${iuran.warga?.nama || '-'} - ${iuran.bulan}/${iuran.tahun} (edit)`,
+        tanggal: iuran.tanggal,
+        debet,
+        kredit: 0,
+        dibuat_oleh: req.session.user.id
+      });
+      jenisTerdampak.add(jenis_kas);
+    }
+  }
+
+  for (const jenis of jenisTerdampak) await hitungUlangSaldo(jenis);
+  await tulisAudit(req, 'UPDATE', 'Iuran IWK', `Edit nominal/catatan IWK ${iuran.warga?.nama || req.params.id}`);
+  res.json({ message: 'Riwayat IWK berhasil diperbarui', data: iuran });
 });
 
 router.delete('/:id', requireRole('admin'), async (req, res) => { await IuranWajib.findByIdAndDelete(req.params.id); await tulisAudit(req, 'DELETE', 'Iuran IWK', `Hapus iuran ${req.params.id}`); res.json({ message: 'Iuran dihapus. Catatan: transaksi kas otomatis belum dibalik di starter ini.' }); });

@@ -18,4 +18,18 @@ async function saldoSemuaKas() {
   return result;
 }
 
-module.exports = { saldoTerakhir, buatTransaksiKas, saldoSemuaKas };
+
+async function hitungUlangSaldo(jenis_kas = null) {
+  const filter = jenis_kas ? { jenis_kas } : {};
+  const rows = await TransaksiKas.find(filter).sort({ jenis_kas: 1, tanggal: 1, createdAt: 1, _id: 1 });
+  const saldoMap = {};
+  for (const row of rows) {
+    const jenis = row.jenis_kas;
+    saldoMap[jenis] = Number(saldoMap[jenis] || 0) + Number(row.debet || 0) - Number(row.kredit || 0);
+    row.saldo = saldoMap[jenis];
+    await row.save();
+  }
+}
+
+module.exports = { saldoTerakhir, buatTransaksiKas, saldoSemuaKas, hitungUlangSaldo };
+

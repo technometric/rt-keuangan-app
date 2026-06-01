@@ -1,19 +1,28 @@
-# Patch v1.2.2 - RT Keuangan App
+# Patch v1.2.3 - IWK Petugas & Bugfix Admin
 
-Perubahan:
-1. Menu admin di titik tiga halaman umum dihapus. Admin tetap masuk via `/admin`.
-2. Sidebar admin dan petugas diganti menu titik tiga floating bawah.
-3. Nominal IWK default otomatis mengikuti total penjumlahan parameter komponen IWK.
-4. Master Data bisa membuat parameter IWK baru dan mengaktifkan parameter lama.
-5. Daftar warga diurutkan natural berdasarkan no rumah dan ditambah nomor urut.
-6. Status Pembayaran IWK bisa tampil All 1 Tahun atau per bulan.
-7. Status tampilan menjadi Bayar / Kurang / Blm Bayar.
-8. Indikator status berubah menjadi border saja, bukan warna penuh.
-9. Default filter status publik adalah Blm Bayar.
+## Perubahan
+1. Bugfix akses admin dari `/admin/` dan `/admin`.
+2. Dashboard petugas punya filter riwayat IWK bulan/tahun.
+3. Dashboard petugas punya tombol Print/Share PDF riwayat pembayaran IWK.
+4. Tabel riwayat IWK bisa edit kolom nominal dan catatan.
+5. Saat nominal IWK diedit, rincian komponen IWK dan transaksi kas IWK lama dibuat ulang, lalu saldo kas terkait dihitung ulang.
+6. Default tampilan Status Pembayaran IWK umum sekarang bulan berjalan, bukan All 1 Tahun.
+7. Versi aplikasi naik ke `1.2.3`.
 
-Cara pakai:
-- Extract ke root project, replace file yang sama.
-- Jalankan `npm install` jika package berubah.
-- Restart aplikasi.
+## Cara pasang
+Copy semua folder/file patch ini ke root project, replace file lama.
 
-Tidak perlu menjalankan import warga lagi kecuali database warga masih kosong.
+Lalu restart aplikasi:
+
+```bash
+npm run dev
+```
+
+atau jika pakai PM2:
+
+```bash
+pm2 restart rt-keuangan
+```
+
+## Catatan
+Tidak perlu `npm run seed` ulang.
