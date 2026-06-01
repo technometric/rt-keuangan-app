@@ -1,33 +1,38 @@
-# Patch v1.2.8 - Backup, Restore, Maintenance Reset Kas
+# Patch v1.2.9 - Laporan Keuangan PDF/PNG
 
-## Isi patch
-- Fitur backup data JSON khusus admin.
-- Fitur restore data dari file backup JSON khusus admin.
-- Fitur maintenance reset semua transaksi kas.
-- Menu baru admin: Backup & Maintenance.
-- Versi aplikasi naik ke 1.2.8.
+## Fitur baru
+1. Halaman laporan keuangan khusus admin: `/admin/laporan-keuangan`
+2. Export laporan keuangan ke PDF.
+3. Export tampilan laporan keuangan ke PNG dari browser.
+4. Pilihan periode transaksi: 1 bulan atau 3 bulan terakhir.
+5. Ringkasan total saldo semua kas.
+6. Ringkasan saldo setiap kas.
+7. Tabel transaksi semua kas sesuai periode.
+8. Opsi tampilkan/sembunyikan data warga yang belum bayar IWK bulan berjalan.
 
 ## File yang berubah/ditambah
-- server.js
-- package.json
-- routes/pageRoutes.js
-- routes/maintenanceRoutes.js
-- views/partials_nav.ejs
-- views/admin/maintenance.ejs
-- public/css/style.css
+- `server.js`
+- `routes/pageRoutes.js`
+- `routes/laporanKeuanganRoutes.js`
+- `views/partials_nav.ejs`
+- `views/admin/laporan-keuangan.ejs`
+- `public/js/app.js`
+- `public/css/style.css`
+- `package.json`
 
-## Cara pasang
-1. Replace file/folder dari patch ke project.
-2. Jalankan:
-   npm install
-3. Restart aplikasi:
-   npm run dev
+## Cara pakai
+1. Replace file sesuai struktur folder.
+2. Restart aplikasi:
 
-## Cara akses
-Login admin lalu buka:
-/admin/maintenance
+```bash
+npm run dev
+```
 
-## Catatan penting
-Restore akan mengganti data aplikasi sesuai isi backup. Sebelum restore atau reset kas, download backup dulu.
+3. Buka:
 
-Reset kas hanya menghapus collection transaksi kas. Data warga, user, parameter IWK, dan riwayat IWK tidak ikut dihapus.
+```txt
+http://localhost:3035/admin/laporan-keuangan
+```
+
+## Catatan PNG
+Export PNG memakai `html2canvas` dari CDN pada halaman laporan. Jika server/laptop tidak terkoneksi internet, tombol PNG bisa gagal termuat. PDF tetap berjalan dari backend.

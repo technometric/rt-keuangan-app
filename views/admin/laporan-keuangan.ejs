@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Laporan Keuangan RT02</title>
+  <link rel="stylesheet" href="/css/style.css">
+  <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+</head>
+<body>
+  <div class="app">
+    <%- include('../partials_nav') %>
+    <main class="main report-main">
+      <div class="topbar report-toolbar">
+        <div>
+          <div class="title">Laporan Keuangan</div>
+          <div class="sub">Format ringkasan yang rapi untuk dibagikan ke grup warga.</div>
+        </div>
+        <div class="actions report-actions">
+          <select id="reportPeriode" class="select mini-select" onchange="loadLaporanKeuangan()">
+            <option value="1">Transaksi 1 bulan</option>
+            <option value="3">Transaksi 3 bulan</option>
+          </select>
+          <label class="check-pill"><input id="showBelumBayar" type="checkbox" onchange="loadLaporanKeuangan()"> Tampilkan belum bayar IWK</label>
+          <button class="btn orange" onclick="downloadLaporanPdf()">Download PDF</button>
+          <button class="btn" onclick="downloadLaporanPng()">Download PNG</button>
+        </div>
+      </div>
+
+      <section id="laporanKeuanganCard" class="share-report-card">
+        <div class="report-cover">
+          <div>
+            <p>Informasi Keuangan Warga</p>
+            <h1>Laporan Keuangan RT02</h1>
+            <span id="reportPeriodText">-</span>
+          </div>
+          <div class="report-total-box">
+            <small>Total Saldo</small>
+            <strong id="reportTotalSaldo">Rp 0</strong>
+          </div>
+        </div>
+
+        <div class="report-section">
+          <div class="report-section-title">
+            <h2>Saldo Semua Kas</h2>
+            <p>Ringkasan posisi saldo terakhir per pos kas.</p>
+          </div>
+          <div id="reportSaldoGrid" class="report-saldo-grid"></div>
+        </div>
+
+        <div class="report-section report-summary-row">
+          <div class="summary-mini income"><span>Total Pemasukan Periode</span><strong id="reportTotalDebet">Rp 0</strong></div>
+          <div class="summary-mini outcome"><span>Total Pengeluaran Periode</span><strong id="reportTotalKredit">Rp 0</strong></div>
+          <div class="summary-mini"><span>Jumlah Transaksi</span><strong id="reportTotalTransaksi">0</strong></div>
+        </div>
+
+        <div class="report-section">
+          <div class="report-section-title">
+            <h2>Transaksi Semua Kas</h2>
+            <p id="reportTransaksiNote">-</p>
+          </div>
+          <div class="report-table-wrap">
+            <table class="report-table">
+              <thead><tr><th>Tanggal</th><th>Kas</th><th>Keterangan</th><th>Masuk</th><th>Keluar</th></tr></thead>
+              <tbody id="reportTransaksiRows"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div id="reportBelumBayarSection" class="report-section hide">
+          <div class="report-section-title">
+            <h2>Data Belum Bayar IWK</h2>
+            <p>Bagian ini bisa disembunyikan sebelum export.</p>
+          </div>
+          <div class="report-table-wrap">
+            <table class="report-table compact-table">
+              <thead><tr><th>No</th><th>Nama</th><th>No Rumah</th><th>Area</th></tr></thead>
+              <tbody id="reportBelumBayarRows"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="report-footer-note">Dicetak dari SIKERT RT02 · <span id="reportGeneratedAt">-</span></div>
+      </section>
+    </main>
+  </div>
+  <script src="/js/app.js"></script>
+  <script>loadLaporanKeuangan();</script>
+</body>
+</html>

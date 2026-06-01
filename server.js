@@ -49,5 +49,6 @@ app.use('/api/info', require('./routes/infoRoutes'));
 app.use('/api/public', require('./routes/publicRoutes'));
 app.use('/api/export', require('./routes/exportRoutes'));
 app.use('/api/maintenance', require('./routes/maintenanceRoutes'));
+app.use('/api/laporan-keuangan', require('./routes/laporanKeuanganRoutes'));
 
 app.listen(PORT, () => console.log(`SIKERT running on http://localhost:${PORT}`));
