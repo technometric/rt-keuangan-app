@@ -81,3 +81,6 @@
 .progress-money{font-size:26px;font-weight:900;color:#0f172a;letter-spacing:-.5px}.progress-money span{font-size:15px;color:#64748b;font-weight:700}
 .progress-note{font-size:13px;color:#64748b;margin-top:5px}.progress-bar{height:10px;background:#eef2ff;border-radius:999px;overflow:hidden;margin-top:12px}.progress-bar i{display:block;height:100%;background:#2563eb;border-radius:999px}
 @media(max-width:640px){.iwk-progress-card{padding:15px;border-radius:16px}.progress-money{font-size:22px}.progress-note{font-size:12px}}
+.btn.danger{background:var(--red)}
+.danger-zone{border-color:#fecaca;background:#fffafa}
+.form-msg{margin-top:10px;font-weight:800;color:var(--muted)}
