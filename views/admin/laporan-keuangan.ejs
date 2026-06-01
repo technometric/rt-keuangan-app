@@ -22,6 +22,7 @@
             <option value="3">Transaksi 3 bulan</option>
           </select>
           <label class="check-pill"><input id="showBelumBayar" type="checkbox" onchange="loadLaporanKeuangan()"> Tampilkan belum bayar IWK</label>
+          <button class="btn muted" onclick="generateIuranRwBulanan()">Buat Pengeluaran Iuran RW</button>
           <button class="btn orange" onclick="downloadLaporanPdf()">Download PDF</button>
           <button class="btn" onclick="downloadLaporanPng()">Download PNG</button>
         </div>
@@ -42,8 +43,7 @@
 
         <div class="report-section">
           <div class="report-section-title">
-            <h2>Saldo Semua Kas</h2>
-            <p>Ringkasan posisi saldo terakhir per pos kas.</p>
+            <h2>Saldo Kas</h2>
           </div>
           <div id="reportSaldoGrid" class="report-saldo-grid"></div>
         </div>
@@ -52,11 +52,12 @@
           <div class="summary-mini income"><span>Total Pemasukan Periode</span><strong id="reportTotalDebet">Rp 0</strong></div>
           <div class="summary-mini outcome"><span>Total Pengeluaran Periode</span><strong id="reportTotalKredit">Rp 0</strong></div>
           <div class="summary-mini"><span>Jumlah Transaksi</span><strong id="reportTotalTransaksi">0</strong></div>
+          <div class="summary-mini"><span>Iuran Sampah, Satpam & Kas RW</span><strong id="reportIuranRwGabungan">Rp 0</strong></div>
         </div>
 
         <div class="report-section">
           <div class="report-section-title">
-            <h2>Transaksi Semua Kas</h2>
+            <h2>Transaksi Kas</h2>
             <p id="reportTransaksiNote">-</p>
           </div>
           <div class="report-table-wrap">

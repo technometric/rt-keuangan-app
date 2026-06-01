@@ -1,38 +1,15 @@
-# Patch v1.2.9 - Laporan Keuangan PDF/PNG
+# Patch v1.3.0 - Revisi Laporan Keuangan
 
-## Fitur baru
-1. Halaman laporan keuangan khusus admin: `/admin/laporan-keuangan`
-2. Export laporan keuangan ke PDF.
-3. Export tampilan laporan keuangan ke PNG dari browser.
-4. Pilihan periode transaksi: 1 bulan atau 3 bulan terakhir.
-5. Ringkasan total saldo semua kas.
-6. Ringkasan saldo setiap kas.
-7. Tabel transaksi semua kas sesuai periode.
-8. Opsi tampilkan/sembunyikan data warga yang belum bayar IWK bulan berjalan.
+Isi patch:
+- Uang sampah, uang satpam, dan kas RW disembunyikan dari laporan keuangan warga.
+- Saldo laporan hanya menampilkan kas yang relevan untuk warga: Kas RT, Kas Sosial, Santunan Kematian, Kas Donasi, Tabungan Sampah, dan Danus.
+- Transaksi laporan juga menyembunyikan pos uang sampah, uang satpam, dan kas RW.
+- Tambah tombol **Buat Pengeluaran Iuran RW** untuk membuat/memperbarui 1 transaksi kredit Kas RT dengan keterangan `Iuran sampah, satpam dan kas RW`.
+- Periode laporan 1 bulan/3 bulan sekarang selalu mengambil bulan sebelumnya dari bulan laporan. Contoh dibuat bulan Juni: 1 bulan = Mei, 3 bulan = Maret-Mei.
+- Export PDF/PNG mengikuti aturan laporan baru.
 
-## File yang berubah/ditambah
-- `server.js`
-- `routes/pageRoutes.js`
-- `routes/laporanKeuanganRoutes.js`
-- `views/partials_nav.ejs`
-- `views/admin/laporan-keuangan.ejs`
-- `public/js/app.js`
-- `public/css/style.css`
-- `package.json`
-
-## Cara pakai
-1. Replace file sesuai struktur folder.
-2. Restart aplikasi:
-
-```bash
-npm run dev
-```
-
-3. Buka:
-
-```txt
-http://localhost:3035/admin/laporan-keuangan
-```
-
-## Catatan PNG
-Export PNG memakai `html2canvas` dari CDN pada halaman laporan. Jika server/laptop tidak terkoneksi internet, tombol PNG bisa gagal termuat. PDF tetap berjalan dari backend.
+Cara pakai:
+1. Replace file patch ke project.
+2. Restart aplikasi.
+3. Buka `/admin/laporan-keuangan`.
+4. Klik **Buat Pengeluaran Iuran RW** sebelum export laporan bulanan jika ingin mencatat pengeluaran rutin gabungan ke Kas RT.

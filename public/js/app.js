@@ -347,7 +347,7 @@ function renderIwkYear(){
   }).join('');
 }
 
-// v1.2.9 Laporan Keuangan PDF/PNG
+// v1.3.0 Laporan Keuangan PDF/PNG
 async function loadLaporanKeuangan(){
   const card = document.getElementById('laporanKeuanganCard');
   if(!card) return;
@@ -361,7 +361,9 @@ async function loadLaporanKeuangan(){
   document.getElementById('reportTotalDebet').textContent = rupiah(data.totalDebet || 0);
   document.getElementById('reportTotalKredit').textContent = rupiah(data.totalKredit || 0);
   document.getElementById('reportTotalTransaksi').textContent = Number(data.transaksi?.length || 0).toLocaleString('id-ID');
-  document.getElementById('reportTransaksiNote').textContent = `Menampilkan transaksi periode ${data.meta?.periodeLabel || ''}`;
+  const rwEl = document.getElementById('reportIuranRwGabungan');
+  if (rwEl) rwEl.textContent = rupiah(data.iuranRwGabungan || 0);
+  document.getElementById('reportTransaksiNote').textContent = `Menampilkan transaksi periode ${data.meta?.periodeLabel || ''}. Pos uang sampah, satpam dan kas RW disembunyikan dari laporan.`;
 
   const saldoGrid = document.getElementById('reportSaldoGrid');
   saldoGrid.innerHTML = Object.entries(data.saldo || {}).map(([k,v]) => `
@@ -397,6 +399,13 @@ function laporanQueryString(){
   const showBelum = document.getElementById('showBelumBayar')?.checked ? 'true' : 'false';
   const d = new Date();
   return `periode=${periode}&bulan=${d.getMonth()+1}&tahun=${d.getFullYear()}&showBelumBayar=${showBelum}`;
+}
+async function generateIuranRwBulanan(){
+  if(!confirm('Buat/perbarui 1 transaksi pengeluaran Kas RT untuk iuran sampah, satpam dan kas RW bulan sebelumnya?')) return;
+  const d = new Date();
+  const data = await api(`/api/laporan-keuangan/generate-iuran-rw?bulan=${d.getMonth()+1}&tahun=${d.getFullYear()}`, {method:'POST'});
+  alert(`${data.message}\nNominal: ${rupiah(data.total || 0)}\nPeriode: ${data.periodeText || '-'}`);
+  await loadLaporanKeuangan();
 }
 function downloadLaporanPdf(){
   location.href = `/api/laporan-keuangan/pdf?${laporanQueryString()}`;
