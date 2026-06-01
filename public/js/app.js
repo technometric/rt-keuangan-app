@@ -4,8 +4,17 @@ const isPublic = () => window.PUBLIC_DASHBOARD === true;
 const apiBase = path => isPublic() ? `/api/public${path}` : path;
 const bulanNama = ['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agu','Sep','Okt','Nov','Des'];
 let iwkYear = new Date().getFullYear();
-let iwkFilter = 'semua';
+let iwkFilter = 'belum_bayar';
+let iwkPeriodMode = 'all';
 let iwkYearData = [];
+
+function labelStatus(s){
+  if(s === 'lunas' || s === 'bayar') return 'Bayar';
+  if(s === 'kurang') return 'Kurang';
+  return 'Blm Bayar';
+}
+function normStatus(s){ return s === 'lunas' ? 'bayar' : (s || 'belum_bayar'); }
+function statusClass(s){ s = normStatus(s); return s === 'bayar' ? 'green' : s === 'kurang' ? 'orange' : 'red'; }
 
 async function api(url, options = {}) {
   const res = await fetch(url, options);
@@ -32,14 +41,14 @@ async function loadWarga(selectId = 'warga') {
   const el = document.getElementById(selectId);
   if (el) el.innerHTML = data.map(w => `<option value="${w._id}">${w.no_rumah} - ${w.nama} (${w.area})</option>`).join('');
   const rows = document.getElementById('wargaRows');
-  if (rows) rows.innerHTML = data.map(w => `<tr><td>${w.nama}</td><td>${w.no_rumah}</td><td>${w.area}</td><td>${w.hp || '-'}</td></tr>`).join('');
+  if (rows) rows.innerHTML = data.map((w,i) => `<tr><td>${i+1}</td><td>${w.no_rumah}</td><td>${w.nama}</td><td>${w.area}</td><td>${w.hp || '-'}</td></tr>`).join('');
 }
 
 async function loadIwk() {
   const data = await api('/api/iuran-wajib');
   const el = document.getElementById('riwayat');
   if (!el) return;
-  el.innerHTML = data.map(x => `<tr><td>${new Date(x.tanggal).toLocaleDateString('id-ID')}</td><td>${x.warga?.nama || '-'}</td><td>${rupiah(x.nominal_bayar)}<br><small>${bulanNama[(x.bulan || 1)-1]} ${x.tahun || ''}</small></td><td><span class="badge ${x.status === 'lunas' ? 'green' : x.status === 'kurang' ? 'orange' : 'red'}">${x.status}</span></td><td>${x.petugas?.nama || x.catatan_petugas || '-'}</td></tr>`).join('');
+  el.innerHTML = data.map(x => `<tr><td>${new Date(x.tanggal).toLocaleDateString('id-ID')}</td><td>${x.warga?.nama || '-'}</td><td>${rupiah(x.nominal_bayar)}<br><small>${bulanNama[(x.bulan || 1)-1]} ${x.tahun || ''}</small></td><td><span class="badge outline ${statusClass(x.status)}">${labelStatus(x.status)}</span></td><td>${x.petugas?.nama || x.catatan_petugas || '-'}</td></tr>`).join('');
 }
 
 async function loadIwkBulanIni() {
@@ -48,7 +57,7 @@ async function loadIwkBulanIni() {
   const data = await api(url);
   const el = document.getElementById('iwkRows');
   if (!el) return;
-  el.innerHTML = data.map(x => `<tr><td>${x.warga?.nama || '-'}</td><td>${x.warga?.no_rumah || '-'}</td><td>${x.warga?.area || '-'}</td><td>${rupiah(x.nominal_bayar)}</td><td><span class="badge ${x.status === 'lunas' ? 'green' : x.status === 'kurang' ? 'orange' : 'red'}">${x.status}</span></td></tr>`).join('');
+  el.innerHTML = data.map(x => `<tr><td>${x.warga?.nama || '-'}</td><td>${x.warga?.no_rumah || '-'}</td><td>${x.warga?.area || '-'}</td><td>${rupiah(x.nominal_bayar)}</td><td><span class="badge outline ${statusClass(x.status)}">${labelStatus(x.status)}</span></td></tr>`).join('');
 }
 
 function setupBulanMulai(){
@@ -61,6 +70,16 @@ function setupBulanMulai(){
   tahun.value = now.getFullYear();
 }
 
+async function setDefaultNominalIwk(){
+  const nominal = document.getElementById('nominalBayar');
+  if(!nominal) return;
+  try{
+    const p = await api('/api/parameter-iwk');
+    nominal.value = Number(p.total_iwk || 0);
+    nominal.placeholder = `Nominal total bayar (${rupiah(p.total_iwk || 0)})`;
+  }catch(e){}
+}
+
 function bindIwkForm() {
   const form = document.getElementById('formIwk');
   if (!form) return;
@@ -69,12 +88,12 @@ function bindIwkForm() {
     const msg = document.getElementById('msg');
     try {
       const result = await fetch('/api/iuran-wajib', { method: 'POST', body: new FormData(form) }).then(async r => { const d = await r.json(); if(!r.ok) throw new Error(d.message); return d; });
-      form.reset(); setupBulanMulai(); msg.textContent = result.message || 'Pembayaran berhasil disimpan.'; await loadIwk();
+      form.reset(); setupBulanMulai(); await setDefaultNominalIwk(); msg.textContent = result.message || 'Pembayaran berhasil disimpan.'; await loadIwk();
     } catch (err) { msg.textContent = err.message; }
   });
 }
 
-async function initPetugasIwk() { setupBulanMulai(); await loadWarga(); bindIwkForm(); await loadIwk(); }
+async function initPetugasIwk() { setupBulanMulai(); await setDefaultNominalIwk(); await loadWarga(); bindIwkForm(); await loadIwk(); }
 
 async function initKas() {
   document.getElementById('formKas').addEventListener('submit', async e => {
@@ -91,15 +110,32 @@ async function loadKasRows() {
   kasRows.innerHTML = data.map(x => `<tr><td>${new Date(x.tanggal).toLocaleDateString('id-ID')}</td><td>${nice(x.jenis_kas)}</td><td>${x.keterangan}</td><td>${rupiah(x.debet)}</td><td>${rupiah(x.kredit)}</td><td>${rupiah(x.saldo)}</td></tr>`).join('');
 }
 
+function syncParamTotal(){
+  if(!window.formParam) return;
+  const keys = ['uang_satpam','uang_sampah','kas_rw','kas_rt','kas_sosial','santunan_kematian'];
+  const total = keys.reduce((t,k)=>t + Number(formParam.elements[k]?.value || 0),0);
+  const totalEl = document.getElementById('paramTotalText');
+  if(totalEl) totalEl.textContent = rupiah(total);
+}
+
 async function initMaster() {
   const p = await api('/api/parameter-iwk');
   for (const [k,v] of Object.entries(p)) if (formParam.elements[k]) formParam.elements[k].type === 'checkbox' ? formParam.elements[k].checked = !!v : formParam.elements[k].value = v;
+  syncParamTotal();
+  ['uang_satpam','uang_sampah','kas_rw','kas_rt','kas_sosial','santunan_kematian'].forEach(k=>formParam.elements[k]?.addEventListener('input', syncParamTotal));
   formParam.addEventListener('submit', async e => {
     e.preventDefault();
     const body = Object.fromEntries(new FormData(e.target).entries());
     body.wajib_foto_cash = e.target.wajib_foto_cash.checked;
     await api('/api/parameter-iwk', { method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) });
-    alert('Parameter tersimpan');
+    alert('Parameter tersimpan'); await loadParameterList();
+  });
+  const btnNew = document.getElementById('btnParamBaru');
+  if(btnNew) btnNew.addEventListener('click', async () => {
+    const body = Object.fromEntries(new FormData(formParam).entries());
+    body.wajib_foto_cash = formParam.wajib_foto_cash.checked;
+    await api('/api/parameter-iwk', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) });
+    alert('Parameter baru dibuat dan diaktifkan'); await loadParameterList();
   });
   formWarga.addEventListener('submit', async e => {
     e.preventDefault();
@@ -108,7 +144,16 @@ async function initMaster() {
     e.target.reset(); await loadWarga();
   });
   await loadWarga();
+  await loadParameterList();
 }
+
+async function loadParameterList(){
+  const rows = document.getElementById('parameterRows');
+  if(!rows) return;
+  const data = await api('/api/parameter-iwk/list');
+  rows.innerHTML = data.map(p => `<tr><td>${new Date(p.createdAt).toLocaleDateString('id-ID')}</td><td>${rupiah(p.total_iwk)}</td><td>${rupiah(p.uang_satpam)}</td><td>${rupiah(p.uang_sampah)}</td><td>${rupiah(p.kas_rw)}</td><td>${rupiah(p.kas_rt)}</td><td>${rupiah(p.kas_sosial)}</td><td>${rupiah(p.santunan_kematian)}</td><td>${p.aktif ? '<span class="success-text">Aktif</span>' : `<button class="mini-btn" onclick="aktifkanParameter('${p._id}')">Aktifkan</button>`}</td></tr>`).join('');
+}
+async function aktifkanParameter(id){ await api(`/api/parameter-iwk/${id}/aktif`, {method:'PUT'}); await loadParameterList(); location.reload(); }
 
 function toggleAudit(){ document.getElementById('auditWrap')?.classList.toggle('hide'); }
 async function loadAudit(){
@@ -146,15 +191,20 @@ async function deleteUser(id){ if(confirm('Hapus user ini?')){ await api(`/api/u
 
 function togglePublicMenu(){ document.getElementById('publicMenu')?.classList.toggle('hide'); }
 document.addEventListener('click', e => {
-  const menu = document.getElementById('publicMenu');
-  const btn = document.querySelector('.hamburger');
-  if(menu && btn && !menu.contains(e.target) && !btn.contains(e.target)) menu.classList.add('hide');
+  const pubMenu = document.getElementById('publicMenu');
+  const pubBtn = document.querySelector('.floating-kebab');
+  if(pubMenu && pubBtn && !pubMenu.contains(e.target) && !pubBtn.contains(e.target)) pubMenu.classList.add('hide');
+  const prvMenu = document.getElementById('privateMenu');
+  const prvBtn = document.querySelector('.private-kebab');
+  if(prvMenu && prvBtn && !prvMenu.contains(e.target) && !prvBtn.contains(e.target)) prvMenu.classList.add('hide');
 });
 
 async function initIwkYearView(){
+  const sel = document.getElementById('iwkPeriodMode');
+  if(sel) sel.value = 'all';
   await loadIwkYear();
 }
-function changeIwkYear(delta){ iwkYear += delta; loadIwkYear(); }
+function setIwkPeriodMode(value){ iwkPeriodMode = value; renderIwkYear(); }
 function setIwkFilter(status, btn){
   iwkFilter = status;
   document.querySelectorAll('.filter-pill').forEach(x=>x.classList.remove('active'));
@@ -170,7 +220,8 @@ async function loadIwkYear(){
 }
 function rowMatchesFilter(row){
   if(iwkFilter === 'semua') return true;
-  return Object.values(row.bulan || {}).some(x => x.status === iwkFilter);
+  if(iwkPeriodMode !== 'all') return normStatus(row.bulan?.[Number(iwkPeriodMode)]?.status) === iwkFilter;
+  return Object.values(row.bulan || {}).some(x => normStatus(x.status) === iwkFilter);
 }
 function renderIwkYear(){
   const el = document.getElementById('iwkYearGrid');
@@ -178,12 +229,13 @@ function renderIwkYear(){
   const filtered = iwkYearData.filter(rowMatchesFilter);
   if(!filtered.length){ el.innerHTML = '<div class="empty-state">Data tidak ditemukan untuk filter ini.</div>'; return; }
   el.innerHTML = filtered.map(row => {
-    const cells = bulanNama.map((b,i)=>{
-      const item = row.bulan?.[i+1] || {status:'belum_bayar', nominal:0};
-      const cls = item.status === 'lunas' ? 'paid' : item.status === 'kurang' ? 'partial' : 'unpaid';
-      const title = `${b}: ${item.status.replace('_',' ')} - ${rupiah(item.nominal || 0)}`;
-      return `<span class="month-dot ${cls}" title="${title}">${b}</span>`;
+    const months = iwkPeriodMode === 'all' ? bulanNama.map((_,i)=>i+1) : [Number(iwkPeriodMode)];
+    const cells = months.map(m=>{
+      const item = row.bulan?.[m] || {status:'belum_bayar', nominal:0};
+      const cls = normStatus(item.status) === 'bayar' ? 'paid' : normStatus(item.status) === 'kurang' ? 'partial' : 'unpaid';
+      const title = `${bulanNama[m-1]}: ${labelStatus(item.status)} - ${rupiah(item.nominal || 0)}`;
+      return `<span class="month-dot ${cls}" title="${title}"><b>${bulanNama[m-1]}</b><small>${labelStatus(item.status)}</small></span>`;
     }).join('');
-    return `<div class="iwk-year-card"><div class="iwk-person"><strong>${row.warga?.nama || '-'}</strong><span>${row.warga?.no_rumah || '-'} · ${row.warga?.area || '-'}</span></div><div class="month-row">${cells}</div></div>`;
+    return `<div class="iwk-year-card"><div class="iwk-person"><strong>${row.no || ''}. ${row.warga?.nama || '-'}</strong><span>${row.warga?.no_rumah || '-'} · ${row.warga?.area || '-'}</span></div><div class="month-row ${iwkPeriodMode !== 'all' ? 'single-month' : ''}">${cells}</div></div>`;
   }).join('');
 }

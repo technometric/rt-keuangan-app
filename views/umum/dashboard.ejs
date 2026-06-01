@@ -13,7 +13,6 @@
     </button>
     <div id="publicMenu" class="public-menu floating-public-menu hide">
       <a href="/login?next=/petugas/dashboard">Login Petugas</a>
-      <a href="/login?next=/admin/dashboard">Login Admin</a>
     </div>
   </div>
 
@@ -39,27 +38,31 @@
     <section class="public-panel">
       <div class="section-head compact year-head">
         <div>
-          <h2>Status Pembayaran IWK 1 Tahun</h2>
-          <p>Mode ringkas dengan warna per bulan.</p>
+          <h2>Status Pembayaran IWK</h2>
+          <p>Default menampilkan warga yang belum bayar.</p>
         </div>
-        <div class="year-control">
-          <button class="mini-btn" onclick="changeIwkYear(-1)">‹</button>
+        <div class="year-control stacked-control">
+          <select id="iwkPeriodMode" class="select mini-select" onchange="setIwkPeriodMode(this.value)">
+            <option value="all">All 1 Tahun</option>
+            <option value="1">Januari</option><option value="2">Februari</option><option value="3">Maret</option><option value="4">April</option>
+            <option value="5">Mei</option><option value="6">Juni</option><option value="7">Juli</option><option value="8">Agustus</option>
+            <option value="9">September</option><option value="10">Oktober</option><option value="11">November</option><option value="12">Desember</option>
+          </select>
           <strong id="iwkYearText"></strong>
-          <button class="mini-btn" onclick="changeIwkYear(1)">›</button>
         </div>
       </div>
 
       <div class="status-filter">
-        <button class="filter-pill active" data-status="semua" onclick="setIwkFilter('semua', this)">Semua</button>
-        <button class="filter-pill green" data-status="lunas" onclick="setIwkFilter('lunas', this)">Lunas</button>
+        <button class="filter-pill green" data-status="bayar" onclick="setIwkFilter('bayar', this)">Bayar</button>
         <button class="filter-pill orange" data-status="kurang" onclick="setIwkFilter('kurang', this)">Kurang</button>
-        <button class="filter-pill red" data-status="belum_bayar" onclick="setIwkFilter('belum_bayar', this)">Belum Lunas</button>
+        <button class="filter-pill red active" data-status="belum_bayar" onclick="setIwkFilter('belum_bayar', this)">Blm Bayar</button>
+        <button class="filter-pill" data-status="semua" onclick="setIwkFilter('semua', this)">Semua</button>
       </div>
 
       <div class="legend-row">
-        <span><i class="dot green"></i>Lunas</span>
-        <span><i class="dot orange"></i>Kurang</span>
-        <span><i class="dot red"></i>Belum lunas</span>
+        <span><i class="dot green hollow"></i>Bayar</span>
+        <span><i class="dot orange hollow"></i>Kurang</span>
+        <span><i class="dot red hollow"></i>Blm bayar</span>
       </div>
 
       <div id="iwkYearGrid" class="iwk-year-grid"></div>

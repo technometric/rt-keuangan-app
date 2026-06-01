@@ -4,10 +4,15 @@ const { requireRole } = require('../middleware/auth');
 const { tulisAudit } = require('../utils/audit');
 const router = express.Router();
 
+function naturalRumah(a, b) {
+  return String(a.no_rumah || '').localeCompare(String(b.no_rumah || ''), 'id', { numeric: true, sensitivity: 'base' }) || String(a.nama||'').localeCompare(String(b.nama||''), 'id');
+}
+
 router.get('/', requireRole('admin','petugas','umum'), async (req, res) => {
   const filter = {};
   if (req.session.user.role === 'petugas') filter.area = req.session.user.area;
-  const data = await WajibIwk.find(filter).sort({ area: 1, no_rumah: 1, nama: 1 });
+  const data = await WajibIwk.find(filter).lean();
+  data.sort(naturalRumah);
   res.json(data);
 });
 router.post('/', requireRole('admin'), async (req, res) => { const warga = await WajibIwk.create(req.body); await tulisAudit(req, 'CREATE', 'Wajib IWK', `Tambah warga ${warga.nama}`); res.json(warga); });

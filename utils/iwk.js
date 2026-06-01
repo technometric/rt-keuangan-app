@@ -21,7 +21,7 @@ function bagiIwk(nominalBayar, parameter) {
 
 function statusIwk(nominalBayar, totalIwk) {
   const bayar = Number(nominalBayar || 0);
-  if (bayar >= Number(totalIwk || 0)) return 'lunas';
+  if (bayar >= Number(totalIwk || 0)) return 'bayar';
   if (bayar > 0) return 'kurang';
   return 'belum_bayar';
 }
