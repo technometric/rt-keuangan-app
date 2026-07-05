@@ -3,33 +3,43 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>Login Warga</title>
+  <title>Login SIKERT02</title>
   <link rel="stylesheet" href="/css/style.css">
 </head>
 <body>
   <div class="login-wrap">
-    <div class="login-card">
-      <div class="brand">SIKERT<span>.</span></div>
-      <div class="sub">Masuk halaman umum dengan nomor rumah. Username dan password sama, contoh K2.31.</div>
-      <input id="username" class="input" placeholder="Nomor rumah">
-      <input id="password" type="password" class="input" placeholder="Ulangi nomor rumah">
-      <button class="btn full" onclick="loginPublic()">Masuk Halaman Umum</button>
-      <p id="msg" class="sub"></p>
-      <div style="margin-top:14px"><a href="/login?next=/petugas/dashboard" class="sub">Login petugas / admin</a></div>
+    <div class="login-card compact-login-card">
+      <div class="brand">SIKERT02</div>
+      <input id="username" class="input" placeholder="Username" autocomplete="username">
+      <input id="password" type="password" class="input" placeholder="Password" autocomplete="current-password">
+      <div class="captcha-row">
+        <span id="captchaQuestion">-</span>
+        <input id="captchaAnswer" class="input" inputmode="numeric" placeholder="Captcha">
+        <button class="mini-btn" type="button" onclick="loadCaptcha()">Ganti</button>
+      </div>
+      <button class="btn full" onclick="loginPublic()">Masuk</button>
+      <p id="msg" class="sub login-msg"></p>
     </div>
   </div>
   <script>
     const nextUrl = '<%= next || "/" %>';
+    async function loadCaptcha(){
+      const r = await fetch('/api/auth/captcha');
+      const d = await r.json();
+      captchaQuestion.textContent = d.question || '-';
+      captchaAnswer.value = '';
+    }
     async function loginPublic(){
       const r = await fetch('/api/auth/public-login', {
         method: 'POST',
         headers: {'Content-Type':'application/json'},
-        body: JSON.stringify({ username: username.value, password: password.value })
+        body: JSON.stringify({ username: username.value, password: password.value, captcha_answer: captchaAnswer.value })
       });
       const d = await r.json();
-      if(!r.ok){ msg.textContent = d.message || 'Login gagal'; return; }
+      if(!r.ok){ msg.textContent = d.message || 'Login gagal'; await loadCaptcha(); return; }
       location.href = nextUrl || d.redirect || '/';
     }
+    loadCaptcha();
   </script>
 </body>
 </html>

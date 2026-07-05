@@ -28,6 +28,7 @@ function normalizePayload(body = {}, old = {}) {
     ? !!old.tampil_tunggakan_iwk_lama
     : body.tampil_tunggakan_iwk_lama === true || body.tampil_tunggakan_iwk_lama === 'true' || body.tampil_tunggakan_iwk_lama === 'on';
   payload.tampil_riwayat_iwk_input = boolFromBody(body.tampil_riwayat_iwk_input, old.tampil_riwayat_iwk_input !== false);
+  payload.tampil_foto_iwk_input = boolFromBody(body.tampil_foto_iwk_input, old.tampil_foto_iwk_input !== false);
   payload.public_kas_visible = {};
   for (const key of publicKasKeys) {
     payload.public_kas_visible[key] = boolFromBody(body[`public_kas_${key}`], old.public_kas_visible?.[key] !== false);
@@ -57,6 +58,7 @@ async function getParam() {
     }
   }
   if (param.tampil_riwayat_iwk_input === undefined) param.tampil_riwayat_iwk_input = true;
+  if (param.tampil_foto_iwk_input === undefined) param.tampil_foto_iwk_input = true;
   if (changedPublicKas) param.markModified('public_kas_visible');
   await param.save();
   return param;
@@ -76,6 +78,14 @@ router.put('/riwayat-iwk-input', requireRole('admin'), async (req, res) => {
   await param.save();
   await tulisAudit(req, 'UPDATE', 'Parameter IWK', `Riwayat IWK input ${param.tampil_riwayat_iwk_input ? 'ditampilkan' : 'disembunyikan'}`);
   res.json({ message: 'Setting riwayat IWK tersimpan', tampil_riwayat_iwk_input: param.tampil_riwayat_iwk_input });
+});
+
+router.put('/foto-iwk-input', requireRole('admin'), async (req, res) => {
+  const param = await getParam();
+  param.tampil_foto_iwk_input = boolFromBody(req.body.tampil_foto_iwk_input);
+  await param.save();
+  await tulisAudit(req, 'UPDATE', 'Parameter IWK', `Input foto IWK ${param.tampil_foto_iwk_input ? 'ditampilkan' : 'disembunyikan'}`);
+  res.json({ message: 'Setting input foto IWK tersimpan', tampil_foto_iwk_input: param.tampil_foto_iwk_input });
 });
 
 router.get('/', requireRole('admin','petugas'), async (req, res) => res.json(await getParam()));

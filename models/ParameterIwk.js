@@ -14,6 +14,7 @@ const ParameterIwkSchema = new mongoose.Schema({
   tampil_tunggakan_umum: { type: Boolean, default: false },
   tampil_tunggakan_iwk_lama: { type: Boolean, default: false },
   tampil_riwayat_iwk_input: { type: Boolean, default: true },
+  tampil_foto_iwk_input: { type: Boolean, default: true },
   public_kas_visible: {
     kas_rt: { type: Boolean, default: true },
     kas_sosial: { type: Boolean, default: true },

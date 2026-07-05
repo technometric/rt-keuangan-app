@@ -269,7 +269,7 @@ function bindIwkForm() {
   });
 }
 
-async function initPetugasIwk() { setupBulanMulai(); await setDefaultNominalIwk(); await loadWarga(); bindIwkForm(); await initRiwayatInputVisibility(); await loadIwk(); await loadPetugasBulanIniTotal(); }
+async function initPetugasIwk() { setupBulanMulai(); await setDefaultNominalIwk(); await loadWarga(); bindIwkForm(); await initRiwayatInputVisibility(); await initFotoInputVisibility(); await loadIwk(); await loadPetugasBulanIniTotal(); }
 
 async function initRiwayatInputVisibility(){
   const panel = document.getElementById('riwayatIwkInputPanel');
@@ -278,6 +278,21 @@ async function initRiwayatInputVisibility(){
     const p = await api('/api/parameter-iwk');
     const show = p.tampil_riwayat_iwk_input !== false;
     panel.classList.toggle('hide', !show);
+    return show;
+  }catch(e){
+    return true;
+  }
+}
+
+async function initFotoInputVisibility(){
+  const wrap = document.getElementById('fotoIwkInputWrap');
+  if(!wrap) return true;
+  try{
+    const p = await api('/api/parameter-iwk');
+    const show = p.tampil_foto_iwk_input !== false;
+    wrap.classList.toggle('hide', !show);
+    const fileInput = wrap.querySelector('input[type="file"]');
+    if(!show && fileInput) fileInput.value = '';
     return show;
   }catch(e){
     return true;
@@ -600,9 +615,11 @@ function closeIwkStatusDetail(){
 async function initIwkLegacySetting(){
   const toggle = document.getElementById('settingTunggakanIwkLama');
   const riwayatToggle = document.getElementById('settingRiwayatIwkInput');
+  const fotoToggle = document.getElementById('settingFotoIwkInput');
   const msg = document.getElementById('settingTunggakanIwkLamaMsg');
   const riwayatMsg = document.getElementById('settingRiwayatIwkInputMsg');
-  if(!toggle && !riwayatToggle) return;
+  const fotoMsg = document.getElementById('settingFotoIwkInputMsg');
+  if(!toggle && !riwayatToggle && !fotoToggle) return;
   const p = await api('/api/parameter-iwk');
   if(toggle){
     toggle.checked = !!p.tampil_tunggakan_iwk_lama;
@@ -624,6 +641,18 @@ async function initIwkLegacySetting(){
         body: JSON.stringify({ tampil_riwayat_iwk_input: riwayatToggle.checked })
       });
       if(riwayatMsg) riwayatMsg.textContent = data.message || 'Setting tersimpan';
+    });
+  }
+  if(fotoToggle){
+    fotoToggle.checked = p.tampil_foto_iwk_input !== false;
+    fotoToggle.addEventListener('change', async () => {
+      const data = await api('/api/parameter-iwk/foto-iwk-input', {
+        method: 'PUT',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({ tampil_foto_iwk_input: fotoToggle.checked })
+      });
+      if(fotoMsg) fotoMsg.textContent = data.message || 'Setting tersimpan';
+      await initFotoInputVisibility();
     });
   }
 }

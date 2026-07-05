@@ -47,3 +47,7 @@ dan akan ada laporan bulanan pemasukan iwk format pdf yg bisa d export untuk d s
 22. kolom riwayat pembayaran iwk d web petugas ada aksi hapus dg konfirmasi input hapus jika terjadi kesalahan input
 23. kolom pencarian warga iwk bisa nama atw nomor rumah tdk caseinsensitif, format nomor rumah misal k2.31 ataw k2 31 atau k2 no 31
 24. yang sdh bayar iwk bulan berjalan tdk muncul lagi dalam kolom warga iwk ya biar mengerucut
+25. card login untuk hanya menampilkan info SIKERT02, user name dan pasword saja yang lain hapus untuk menghindari spaming, dan ada input cacpcha sederhana utk menghindari bot
+26. di halaman umum tdk ada lagi akses masuk petugas dan admin dan setiap kali masuk halaman ini wajib login
+27. masuk petugas itu url/petugas
+28. input file photo d halaman input pembayaram iwk bisa d hid/show admin

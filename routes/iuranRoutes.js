@@ -154,7 +154,7 @@ router.post('/', requireRole('admin','petugas'), upload.single('foto_bayar'), as
   const jumlahBulan = periods.length;
   const tanggalInput = req.body.tanggal ? new Date(req.body.tanggal) : new Date();
 
-  if (metode === 'cash' && param.wajib_foto_cash && !req.file) return res.status(400).json({ message: 'Foto cash wajib diupload' });
+  if (metode === 'cash' && param.wajib_foto_cash && param.tampil_foto_iwk_input !== false && !req.file) return res.status(400).json({ message: 'Foto cash wajib diupload' });
   if (nominalTotal < (minimalIwk * jumlahBulan)) return res.status(400).json({ message: `Minimal bayar IWK adalah ${minimalIwk.toLocaleString('id-ID')} per bulan (satpam/keamanan + sampah).` });
   if (nominalTotal < (totalIwk * jumlahBulan) && !req.body.catatan_petugas) return res.status(400).json({ message: 'Catatan wajib diisi jika belum bayar / bayar kurang' });
 
