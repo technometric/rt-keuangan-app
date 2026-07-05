@@ -93,16 +93,51 @@ router.get('/laporan-bulanan/pdf', requireRole('admin'), async (req, res) => {
   doc.font('Helvetica').fontSize(10).text(`Jumlah data pembayaran: ${rows.length}`);
   doc.moveDown();
 
-  const widths = [64, 142, 64, 82, 82, 82];
-  const draw = (arr, bold=false) => {
-    if (doc.y > 760) doc.addPage();
-    let x = 36;
-    doc.font(bold ? 'Helvetica-Bold' : 'Helvetica').fontSize(8);
-    arr.forEach((v,i) => { doc.text(String(v || '-'), x, doc.y, { width: widths[i] - 4 }); x += widths[i]; });
-    doc.moveDown(1.1);
+  const tableX = 36;
+  const widths = [62, 146, 58, 86, 64, 84];
+  const rowHeight = 24;
+  const headerHeight = 22;
+  const pageBottom = 790;
+  let y = doc.y;
+
+  const fitText = (value, width) => {
+    let text = String(value || '-');
+    const maxWidth = width - 8;
+    while (text.length > 3 && doc.widthOfString(text) > maxWidth) text = text.slice(0, -2);
+    return text.length < String(value || '-').length ? text.slice(0, -3) + '...' : text;
   };
-  draw(['Tanggal','Warga','Rumah','Petugas','Status','Nominal'], true);
-  rows.forEach(row => draw([
+  const drawHeader = () => {
+    let x = tableX;
+    doc.rect(tableX, y, widths.reduce((a,b)=>a+b,0), headerHeight).fill('#f1f5f9');
+    doc.font('Helvetica-Bold').fontSize(8).fillColor('#0f172a');
+    ['Tanggal','Warga','Rumah','Petugas','Status','Nominal'].forEach((text, i) => {
+      doc.text(text, x + 4, y + 7, { width: widths[i] - 8, height: 10 });
+      x += widths[i];
+    });
+    doc.rect(tableX, y, widths.reduce((a,b)=>a+b,0), headerHeight).strokeColor('#cbd5e1').lineWidth(0.6).stroke();
+    y += headerHeight;
+  };
+  const addPageIfNeeded = () => {
+    if (y + rowHeight <= pageBottom) return;
+    doc.addPage();
+    y = 36;
+    drawHeader();
+  };
+  const drawRow = (arr) => {
+    addPageIfNeeded();
+    let x = tableX;
+    doc.rect(tableX, y, widths.reduce((a,b)=>a+b,0), rowHeight).strokeColor('#e2e8f0').lineWidth(0.45).stroke();
+    doc.font('Helvetica').fontSize(8).fillColor('#334155');
+    arr.forEach((value, i) => {
+      const align = i === 5 ? 'right' : 'left';
+      doc.text(fitText(value, widths[i]), x + 4, y + 7, { width: widths[i] - 8, height: 10, align });
+      x += widths[i];
+    });
+    y += rowHeight;
+  };
+
+  drawHeader();
+  rows.forEach(row => drawRow([
     new Date(row.tanggal).toLocaleDateString('id-ID'),
     row.warga?.nama || '-',
     row.warga?.no_rumah || '-',

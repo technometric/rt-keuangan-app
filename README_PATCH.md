@@ -51,3 +51,4 @@ dan akan ada laporan bulanan pemasukan iwk format pdf yg bisa d export untuk d s
 26. di halaman umum tdk ada lagi akses masuk petugas dan admin dan setiap kali masuk halaman ini wajib login
 27. masuk petugas itu url/petugas
 28. input file photo d halaman input pembayaram iwk bisa d hid/show admin
+27. bug hasil export pdf pembayaran iwknya barisnya ga rapi
