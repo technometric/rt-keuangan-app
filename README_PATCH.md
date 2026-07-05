@@ -54,3 +54,7 @@ dan akan ada laporan bulanan pemasukan iwk format pdf yg bisa d export untuk d s
 27. bug hasil export pdf pembayaran iwknya barisnya ga rapi
 28. admin bisa mengatur pilihan tampilan status pembayaran iwk d web umum, bayr, kurang, belum bayar dan semuanya, kalau d pilih semuanya maka tdak ada pilihan tampilan jadi nampil semua yg bayar, kurang dan blm bayar
 29. selektror bulan masih statis blm bisa pilih bulan d tampilan status pembayaran
+
+Patch v1.3.4
+1. saya ingin handle cache browser kalau ada update baru berdasarkan versi
+2. saya ingin setiap masuk halaman wajib login dulu jangan lsg masuk d semua portal umum, petugas atw admin

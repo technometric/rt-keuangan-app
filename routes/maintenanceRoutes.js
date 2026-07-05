@@ -2,6 +2,7 @@ const express = require('express');
 const multer = require('multer');
 const { requireRole } = require('../middleware/auth');
 const { tulisAudit } = require('../utils/audit');
+const pkg = require('../package.json');
 
 const User = require('../models/User');
 const WajibIwk = require('../models/WajibIwk');
@@ -27,7 +28,7 @@ async function makeBackup() {
   for (const c of collections) data[c.key] = await c.model.find({}).lean();
   return {
     app: 'SIKERT RT02',
-    version: '1.2.8',
+    version: pkg.version || '1.0.0',
     type: 'full-backup',
     generated_at: new Date().toISOString(),
     data
