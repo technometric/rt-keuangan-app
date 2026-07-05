@@ -5,6 +5,11 @@ const { tulisAudit } = require('../utils/audit');
 const router = express.Router();
 
 const keys = ['uang_satpam','uang_sampah','kas_pkk','kas_rt','kas_sosial','santunan_kematian'];
+const publicKasKeys = ['kas_rt','kas_sosial','kas_donasi','tabungan_sampah','santunan_kematian','danus'];
+function boolFromBody(value, fallback = false) {
+  if (value === undefined) return fallback;
+  return value === true || value === 'true' || value === 'on' || value === '1';
+}
 function hitungTotal(payload = {}) {
   return keys.reduce((t,k)=>{
     const value = payload[k] ?? (k === 'kas_pkk' ? payload.kas_rw : 0);
@@ -22,6 +27,11 @@ function normalizePayload(body = {}, old = {}) {
   payload.tampil_tunggakan_iwk_lama = body.tampil_tunggakan_iwk_lama === undefined
     ? !!old.tampil_tunggakan_iwk_lama
     : body.tampil_tunggakan_iwk_lama === true || body.tampil_tunggakan_iwk_lama === 'true' || body.tampil_tunggakan_iwk_lama === 'on';
+  payload.tampil_riwayat_iwk_input = boolFromBody(body.tampil_riwayat_iwk_input, old.tampil_riwayat_iwk_input !== false);
+  payload.public_kas_visible = {};
+  for (const key of publicKasKeys) {
+    payload.public_kas_visible[key] = boolFromBody(body[`public_kas_${key}`], old.public_kas_visible?.[key] !== false);
+  }
   payload.wajib_foto_cash = body.wajib_foto_cash === true || body.wajib_foto_cash === 'true' || body.wajib_foto_cash === 'on';
   payload.aktif = body.aktif === false ? false : true;
   return payload;
@@ -38,6 +48,16 @@ async function getParam() {
   }
   if (!param.jumlah_kk_iuran_rw) param.jumlah_kk_iuran_rw = 75;
   if (!param.iuran_ambulan_bulanan) param.iuran_ambulan_bulanan = 50000;
+  if (!param.public_kas_visible) param.public_kas_visible = {};
+  let changedPublicKas = false;
+  for (const key of publicKasKeys) {
+    if (param.public_kas_visible[key] === undefined) {
+      param.public_kas_visible[key] = true;
+      changedPublicKas = true;
+    }
+  }
+  if (param.tampil_riwayat_iwk_input === undefined) param.tampil_riwayat_iwk_input = true;
+  if (changedPublicKas) param.markModified('public_kas_visible');
   await param.save();
   return param;
 }
@@ -48,6 +68,14 @@ router.put('/tunggakan-iwk-lama', requireRole('admin'), async (req, res) => {
   await param.save();
   await tulisAudit(req, 'UPDATE', 'Parameter IWK', `Tunggakan IWK lama ${param.tampil_tunggakan_iwk_lama ? 'ditampilkan' : 'disembunyikan'}`);
   res.json({ message: 'Setting tunggakan IWK lama tersimpan', tampil_tunggakan_iwk_lama: param.tampil_tunggakan_iwk_lama });
+});
+
+router.put('/riwayat-iwk-input', requireRole('admin'), async (req, res) => {
+  const param = await getParam();
+  param.tampil_riwayat_iwk_input = boolFromBody(req.body.tampil_riwayat_iwk_input);
+  await param.save();
+  await tulisAudit(req, 'UPDATE', 'Parameter IWK', `Riwayat IWK input ${param.tampil_riwayat_iwk_input ? 'ditampilkan' : 'disembunyikan'}`);
+  res.json({ message: 'Setting riwayat IWK tersimpan', tampil_riwayat_iwk_input: param.tampil_riwayat_iwk_input });
 });
 
 router.get('/', requireRole('admin','petugas'), async (req, res) => res.json(await getParam()));

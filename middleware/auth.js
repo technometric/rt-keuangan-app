@@ -19,4 +19,9 @@ function pageRole(...roles) {
   };
 }
 
-module.exports = { requireLogin, requireRole, pageRole };
+function requirePublicWarga(req, res, next) {
+  if (req.session.publicWarga) return next();
+  return res.redirect('/umum/login');
+}
+
+module.exports = { requireLogin, requireRole, pageRole, requirePublicWarga };

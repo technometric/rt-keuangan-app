@@ -2,8 +2,12 @@ const express = require('express');
 const IuranWajib = require('../models/IuranWajib');
 const WajibIwk = require('../models/WajibIwk');
 const ParameterIwk = require('../models/ParameterIwk');
+const TunggakanIwk = require('../models/TunggakanIwk');
 const { saldoSemuaKas } = require('../utils/kas');
+const { requirePublicWarga } = require('../middleware/auth');
 const router = express.Router();
+
+router.use(requirePublicWarga);
 
 function naturalRumah(a, b) {
   return String(a.no_rumah || '').localeCompare(String(b.no_rumah || ''), 'id', { numeric: true, sensitivity: 'base' }) || String(a.nama||'').localeCompare(String(b.nama||''), 'id');
@@ -21,15 +25,19 @@ function periodeKey(bulan, tahun) {
   return `${tahun}-${String(bulan).padStart(2, '0')}`;
 }
 function periodeLabel(bulan, tahun) {
-  const nama = ['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agu','Sep','Okt','Nov','Des'];
+  const nama = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
   return `${nama[Number(bulan) - 1]} ${tahun}`;
 }
 
 router.get('/saldo', async (req, res) => {
   const saldo = await saldoSemuaKas();
+  const param = await ParameterIwk.findOne({ aktif: true }).sort({ createdAt: -1 }).lean();
+  const visible = param?.public_kas_visible || {};
   const tampilUmum = ['kas_rt','kas_sosial','kas_donasi','tabungan_sampah','santunan_kematian','danus'];
   const filtered = {};
-  tampilUmum.forEach(k => filtered[k] = saldo[k] || 0);
+  tampilUmum.forEach(k => {
+    if (visible[k] !== false) filtered[k] = saldo[k] || 0;
+  });
   res.json(filtered);
 });
 
@@ -80,6 +88,10 @@ router.get('/iwk-status-cards', async (req, res) => {
   const warga = await WajibIwk.find({ aktif: { $ne: false } }).lean();
   warga.sort(naturalRumah);
   const iuran = await IuranWajib.find({ tahun: { $in: years } }).populate('warga').lean();
+  const legacyRows = tampilTunggakanLama ? await TunggakanIwk.find({
+    aktif: true,
+    tahun: { $in: years }
+  }).lean() : [];
   const periodSet = new Set(periods.map(p => periodeKey(p.bulan, p.tahun)));
   const map = new Map();
   for (const item of iuran) {
@@ -90,11 +102,17 @@ router.get('/iwk-status-cards', async (req, res) => {
     const existing = map.get(mapKey);
     if (!existing || Number(item.nominal_bayar || 0) > Number(existing.nominal_bayar || 0)) map.set(mapKey, item);
   }
+  const legacySet = new Set();
+  for (const item of legacyRows) {
+    const key = periodeKey(item.bulan, item.tahun);
+    if (periodSet.has(key)) legacySet.add(`${String(item.warga)}-${key}`);
+  }
 
   const data = warga.map((w, idx) => {
     const bulanRows = periods.map(p => {
       const item = map.get(`${w._id}-${periodeKey(p.bulan, p.tahun)}`);
-      const status = item ? normalizeStatus(item.status) : 'belum_bayar';
+      const legacyUnpaid = p.jenis === 'lama' && legacySet.has(`${String(w._id)}-${periodeKey(p.bulan, p.tahun)}`);
+      const status = legacyUnpaid ? 'belum_bayar' : item ? normalizeStatus(item.status) : (p.jenis === 'lama' ? 'bayar' : 'belum_bayar');
       const nominal = Number(item?.nominal_bayar || 0);
       return {
         bulan: p.bulan,
@@ -103,12 +121,12 @@ router.get('/iwk-status-cards', async (req, res) => {
         jenis: p.jenis,
         status,
         nominal,
-        catatan: item?.catatan_petugas || ''
+        catatan: legacyUnpaid ? 'Ditandai tunggakan lama' : item?.catatan_petugas || ''
       };
     });
     const current = bulanRows[0];
     const previous = tampilTunggakanLama ? bulanRows.slice(1) : [];
-    const hasTunggakanLama = previous.some(x => normalizeStatus(x.status) !== 'bayar');
+    const hasTunggakanLama = previous.some(x => normalizeStatus(x.status) === 'belum_bayar');
     return {
       no: idx + 1,
       warga: w,

@@ -13,6 +13,15 @@ const ParameterIwkSchema = new mongoose.Schema({
   iuran_ambulan_bulanan: { type: Number, default: 50000 },
   tampil_tunggakan_umum: { type: Boolean, default: false },
   tampil_tunggakan_iwk_lama: { type: Boolean, default: false },
+  tampil_riwayat_iwk_input: { type: Boolean, default: true },
+  public_kas_visible: {
+    kas_rt: { type: Boolean, default: true },
+    kas_sosial: { type: Boolean, default: true },
+    kas_donasi: { type: Boolean, default: true },
+    tabungan_sampah: { type: Boolean, default: true },
+    santunan_kematian: { type: Boolean, default: true },
+    danus: { type: Boolean, default: true }
+  },
   wajib_foto_cash: { type: Boolean, default: false },
   aktif: { type: Boolean, default: true }
 }, { timestamps: true });

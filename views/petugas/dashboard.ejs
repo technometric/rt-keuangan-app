@@ -1,1 +1,68 @@
-<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Input IWK</title><link rel="stylesheet" href="/css/style.css"></head><body><div class="app"><%- include('../partials_nav') %><main class="main"><div class="title">Input Pembayaran IWK</div><div class="sub">Petugas bisa input pembayaran untuk semua wilayah dan beberapa bulan sekaligus.</div><div class="panel"><form id="formIwk"><div class="row"><select class="select" name="warga" id="warga"></select><input class="input" name="nominal_bayar" id="nominalBayar" type="number" placeholder="Nominal total bayar"><select class="select" name="metode_bayar"><option value="cash">Cash</option><option value="transfer">Transfer</option></select></div><div class="row"><select class="select" name="bulan" id="bulanMulai"></select><input class="input" name="tahun" id="tahunMulai" type="number" placeholder="Tahun"><input class="input" name="jumlah_bulan" type="number" min="1" max="24" value="1" placeholder="Jumlah bulan dibayar"></div><div class="row two"><input class="input" type="file" name="foto_bayar" accept="image/*" capture="environment"><textarea name="catatan_petugas" placeholder="Catatan jika belum bayar / bayar kurang"></textarea></div><button class="btn">Simpan Pembayaran</button></form><p id="msg" class="sub"></p></div><div id="petugasIwkTotalBulanIni" class="iwk-progress-card"></div><div class="panel"><div class="table-toolbar"><div><h2>Riwayat IWK</h2><p class="sub">Bisa dicetak PDF sebagai bukti penagihan ke bendahara.</p></div><div class="toolbar-actions"><select id="riwayatBulan" class="select mini-select"></select><input id="riwayatTahun" class="input mini-input" type="number"><button class="btn secondary" type="button" onclick="printRiwayatPetugas()">Print/Share PDF</button></div></div><div class="table-wrap"><table><thead><tr><th>Tanggal</th><th>Warga</th><th>Nominal</th><th>Status</th><th>Catatan</th><th>Aksi</th></tr></thead><tbody id="riwayat"></tbody></table></div></div></main></div><script src="/js/app.js"></script><script>initPetugasIwk()</script></body></html>
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Input IWK</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <div class="app">
+    <%- include('../partials_nav') %>
+    <main class="main">
+      <div class="title">Input Pembayaran IWK</div>
+      <div class="sub">Petugas bisa input pembayaran untuk semua wilayah dan beberapa bulan sekaligus.</div>
+
+      <div class="panel">
+        <form id="formIwk">
+          <div class="row">
+            <label class="field-label">Warga
+              <input type="hidden" name="warga" id="warga" required>
+              <div class="custom-warga-select" data-custom-warga="warga">
+                <input class="input custom-warga-search" type="search" placeholder="Cari nama / no rumah / area" autocomplete="off">
+                <div class="custom-warga-options"></div>
+              </div>
+            </label>
+            <label class="field-label">Nominal Total Bayar<input class="input" name="nominal_bayar" id="nominalBayar" type="number" placeholder="Nominal total bayar"></label>
+            <label class="field-label">Metode Bayar<select class="select" name="metode_bayar"><option value="cash">Cash</option><option value="transfer">Transfer</option></select></label>
+          </div>
+          <div class="row">
+            <label class="field-label">Tahun<input class="input" name="tahun" id="tahunMulai" type="number" placeholder="Tahun"></label>
+            <label class="field-label month-check-field">Bulan Dibayar<div id="bulanChecklist" class="month-check-grid"></div></label>
+          </div>
+          <div class="row two">
+            <label class="field-label">Foto Bayar<input class="input" type="file" name="foto_bayar" accept="image/*" capture="environment"></label>
+            <label class="field-label">Catatan Petugas<textarea name="catatan_petugas" placeholder="Catatan jika belum bayar / bayar kurang"></textarea></label>
+          </div>
+          <button class="btn">Simpan Pembayaran</button>
+        </form>
+        <p id="msg" class="sub"></p>
+      </div>
+
+      <div id="petugasIwkTotalBulanIni" class="iwk-progress-card"></div>
+
+      <div id="riwayatIwkInputPanel" class="panel">
+        <div class="table-toolbar">
+          <div>
+            <h2>Riwayat IWK</h2>
+            <p class="sub">Bisa dicetak PDF sebagai bukti penagihan ke bendahara.</p>
+          </div>
+          <div class="toolbar-actions">
+            <select id="riwayatBulan" class="select mini-select"></select>
+            <input id="riwayatTahun" class="input mini-input" type="number">
+            <button class="btn secondary" type="button" onclick="printRiwayatPetugas()">Print/Share PDF</button>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Tanggal</th><th>Warga</th><th>Nominal</th><th>Status</th><th>Catatan</th><th>Aksi</th></tr></thead>
+            <tbody id="riwayat" data-actions="delete"></tbody>
+          </table>
+        </div>
+      </div>
+    </main>
+  </div>
+  <script src="/js/app.js"></script>
+  <script>initPetugasIwk()</script>
+</body>
+</html>

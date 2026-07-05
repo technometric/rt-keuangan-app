@@ -36,6 +36,16 @@
           </div>
           <label><input type="checkbox" name="wajib_foto_cash"> Wajib foto saat cash</label><br>
           <label><input type="checkbox" name="tampil_tunggakan_umum"> Tampilkan tunggakan periode sebelumnya di web umum</label><br><br>
+          <div class="public-kas-setting">
+            <h3>Kas yang tampil di web umum</h3>
+            <label><input type="hidden" name="public_kas_kas_rt" value="false"><input type="checkbox" name="public_kas_kas_rt" value="true"> Kas RT</label>
+            <label><input type="hidden" name="public_kas_kas_sosial" value="false"><input type="checkbox" name="public_kas_kas_sosial" value="true"> Kas Sosial</label>
+            <label><input type="hidden" name="public_kas_kas_donasi" value="false"><input type="checkbox" name="public_kas_kas_donasi" value="true"> Kas Donasi</label>
+            <label><input type="hidden" name="public_kas_tabungan_sampah" value="false"><input type="checkbox" name="public_kas_tabungan_sampah" value="true"> Tabungan Sampah</label>
+            <label><input type="hidden" name="public_kas_santunan_kematian" value="false"><input type="checkbox" name="public_kas_santunan_kematian" value="true"> Santunan Kematian</label>
+            <label><input type="hidden" name="public_kas_danus" value="false"><input type="checkbox" name="public_kas_danus" value="true"> Danus</label>
+          </div>
+          <br>
           <div class="actions">
             <button class="btn">Update Parameter Aktif</button>
             <button type="button" class="btn orange" id="btnParamBaru">Simpan Sebagai Parameter Baru</button>
@@ -47,7 +57,7 @@
         <h2>Riwayat Parameter IWK</h2>
         <div class="table-scroll">
           <table>
-            <thead><tr><th>Tanggal</th><th>Total</th><th>Satpam</th><th>Sampah</th><th>Kas PKK</th><th>Kas RT</th><th>Sosial</th><th>Santunan</th><th>KK RW</th><th>Tunggakan Umum</th><th>Status</th></tr></thead>
+            <thead><tr><th>Tanggal</th><th>Total</th><th>Satpam</th><th>Sampah</th><th>Kas PKK</th><th>Kas RT</th><th>Sosial</th><th>Santunan</th><th>KK RW</th><th>Tunggakan Umum</th><th>Kas Umum</th><th>Status</th></tr></thead>
             <tbody id="parameterRows"></tbody>
           </table>
         </div>

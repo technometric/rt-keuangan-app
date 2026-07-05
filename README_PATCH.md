@@ -35,3 +35,15 @@ Patch v1.3.2 Revisi KAs RW menjadi Kas PKK
 14. untuk tampilan Status pembayaran iwk d buat menyamping saja misal jadi 10 kolom, d buat tombol card saja nama KK bawahnya no. Rumah 
     kl d klik/tap muncul bulan kebelakang dan skrg yg blm bayar, ini kan periode baru saya jd bendahara maka akan d tampilkan yg masih belum bayar 12 sebelumnya saja dr juli 2025, kl yg juli skrg d lihat dari status bayar iwk saja kl yang bulan juni 2026 - juni 2025 itu ada settingan centangan d menu Iuran wajib IWK khusus admin saya sj kolomnya tunggakan iwk bulan sebelumnya juni 2026 -juni 2025
     jd kl yg merah itu bisa kmungkinan blm bayar bulan sebelumnya
+15. admin bisa hide/show info kas RT, kas Sosial, kas donasi, Tabungan sampah, santunan kematian dan danus d web umum
+16. nama bulan full name saja
+16. menambahkan label kolom input data pada web input pembayaran IWK, untuk dropdown warga apakah bisa d buat jgn menggunakan default web tp custom cupay bisa mudah d cari dan d scroll tdk menutupi halaman
+17. admin bisa hide/show web Riwayat IWK di web input pembayaran iwk 
+18. pembayaran iwk web petugas pilih bulan ingin mode ceklis dan ada 12 ceklisan 1-12 kl bulan berjalan otomatis yg terceklis lsg angka bln tersebut, kalau bayar 3 bulan sekaligus tinggal ceklis 7-8-9
+19. untuk bulan sebelum juli (12 bulan sebelumnya) itu ada settingan centangan saja d masing2 data iwk warga, jd nti saya akan ceklis utnuk bulan juni 2026-juli 2025 yg d ceklis itu belum bayar dan akan tetap merah status nya
+20. Data yang masuk dari web input pembayaran iwk petugas itu masuk dl ke tabel iwk bulanan di dashboard admin
+dan akan ada laporan bulanan pemasukan iwk format pdf yg bisa d export untuk d share, input kas RT itu manual ketika sudah terima setor dari petugas
+21. akase halaman umum harus login user dan pswd nomor rumah misal k2.31, huruf bisa huruf besar/kecil
+22. kolom riwayat pembayaran iwk d web petugas ada aksi hapus dg konfirmasi input hapus jika terjadi kesalahan input
+23. kolom pencarian warga iwk bisa nama atw nomor rumah tdk caseinsensitif, format nomor rumah misal k2.31 ataw k2 31 atau k2 no 31
+24. yang sdh bayar iwk bulan berjalan tdk muncul lagi dalam kolom warga iwk ya biar mengerucut
