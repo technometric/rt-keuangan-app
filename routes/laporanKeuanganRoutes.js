@@ -5,9 +5,10 @@ const { saldoSemuaKas, buatTransaksiKas, hitungUlangSaldoKas } = require('../uti
 const TransaksiKas = require('../models/TransaksiKas');
 const WajibIwk = require('../models/WajibIwk');
 const IuranWajib = require('../models/IuranWajib');
+const ParameterIwk = require('../models/ParameterIwk');
 const router = express.Router();
 
-const HIDDEN_REPORT_KAS = ['uang_sampah', 'uang_satpam', 'kas_rw'];
+const HIDDEN_REPORT_KAS = ['uang_sampah', 'uang_satpam', 'kas_pkk', 'kas_rw'];
 const VISIBLE_REPORT_KAS = ['kas_rt', 'kas_sosial', 'santunan_kematian', 'kas_donasi', 'tabungan_sampah', 'danus'];
 
 const jenisLabel = {
@@ -18,7 +19,8 @@ const jenisLabel = {
   tabungan_sampah: 'Tabungan Sampah',
   uang_sampah: 'Uang Sampah',
   uang_satpam: 'Uang Satpam',
-  kas_rw: 'Kas RW',
+  kas_pkk: 'Kas PKK',
+  kas_rw: 'Kas PKK',
   danus: 'Danus'
 };
 const bulanFull = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
@@ -49,19 +51,31 @@ function filterVisibleSaldo(saldo = {}){
 
 async function hitungIuranRwGabungan(start, end){
   const rows = await TransaksiKas.find({
-    jenis_kas: { $in: HIDDEN_REPORT_KAS },
+    jenis_kas: { $in: ['uang_sampah', 'uang_satpam'] },
     tanggal: { $gte: start, $lt: end },
     sumber: 'iwk'
   }).lean();
   return rows.reduce((sum, x) => sum + Number(x.debet || 0) - Number(x.kredit || 0), 0);
 }
 
+async function getParam(){
+  let param = await ParameterIwk.findOne({ aktif: true }).sort({ createdAt: -1 });
+  if (!param) param = await ParameterIwk.create({ aktif: true });
+  if (!Number(param.kas_pkk || 0) && Number(param.kas_rw || 0) > 0) {
+    param.kas_pkk = Number(param.kas_rw || 0);
+    param.kas_rw = 0;
+    await param.save();
+  }
+  return param;
+}
+
 async function upsertPengeluaranIuranRw({ bulan, tahun, userId }){
   const { start, end } = periodeRange({ bulan, tahun, periode: 1 });
-  const total = await hitungIuranRwGabungan(start, end);
+  const param = await getParam();
+  const total = Number(param.jumlah_kk_iuran_rw || 75) * (Number(param.uang_satpam || 0) + Number(param.uang_sampah || 0));
   const periodeText = periodeLabel({ bulan, tahun, periode: 1 });
   const tanggal = new Date(end.getFullYear(), end.getMonth(), 0, 12, 0, 0);
-  const keterangan = `Iuran sampah, satpam dan kas RW - ${periodeText}`;
+  const keterangan = `Iuran sampah dan satpam ke RW - ${periodeText}`;
 
   let row = await TransaksiKas.findOne({ sumber: 'auto_iuran_rw', jenis_kas: 'kas_rt', keterangan });
   if (total <= 0) {
@@ -69,7 +83,7 @@ async function upsertPengeluaranIuranRw({ bulan, tahun, userId }){
       await row.deleteOne();
       await hitungUlangSaldoKas('kas_rt');
     }
-    return { message: 'Tidak ada nominal iuran sampah/satpam/kas RW pada periode ini.', total, periodeText };
+    return { message: 'Tidak ada nominal iuran sampah/satpam pada periode ini.', total, periodeText };
   }
 
   if (row) {
@@ -79,7 +93,7 @@ async function upsertPengeluaranIuranRw({ bulan, tahun, userId }){
     row.dibuat_oleh = userId;
     await row.save();
     await hitungUlangSaldoKas('kas_rt');
-    return { message: 'Pengeluaran rutin Iuran sampah, satpam dan kas RW diperbarui.', total, periodeText };
+    return { message: 'Pengeluaran rutin Iuran sampah dan satpam ke RW diperbarui.', total, periodeText };
   }
 
   await buatTransaksiKas({
@@ -93,7 +107,64 @@ async function upsertPengeluaranIuranRw({ bulan, tahun, userId }){
     dibuat_oleh: userId
   });
   await hitungUlangSaldoKas('kas_rt');
-  return { message: 'Pengeluaran rutin Iuran sampah, satpam dan kas RW dibuat.', total, periodeText };
+  return { message: 'Pengeluaran rutin Iuran sampah dan satpam ke RW dibuat.', total, periodeText };
+}
+
+async function upsertPengeluaranAmbulan({ bulan, tahun, userId }){
+  const { end } = periodeRange({ bulan, tahun, periode: 1 });
+  const param = await getParam();
+  const total = Number(param.iuran_ambulan_bulanan || 50000);
+  const periodeText = periodeLabel({ bulan, tahun, periode: 1 });
+  const tanggal = new Date(end.getFullYear(), end.getMonth(), 0, 12, 5, 0);
+  const keterangan = `Iuran ambulan bulanan - ${periodeText}`;
+
+  let row = await TransaksiKas.findOne({ sumber: 'auto_iuran_ambulan', jenis_kas: 'kas_rt', keterangan });
+  if (total <= 0) {
+    if (row) {
+      await row.deleteOne();
+      await hitungUlangSaldoKas('kas_rt');
+    }
+    return { total, periodeText };
+  }
+  if (row) {
+    row.tanggal = tanggal;
+    row.debet = 0;
+    row.kredit = total;
+    row.dibuat_oleh = userId;
+    await row.save();
+  } else {
+    await buatTransaksiKas({
+      jenis_kas: 'kas_rt',
+      sumber: 'auto_iuran_ambulan',
+      ref_id: null,
+      keterangan,
+      tanggal,
+      debet: 0,
+      kredit: total,
+      dibuat_oleh: userId
+    });
+  }
+  await hitungUlangSaldoKas('kas_rt');
+  return { total, periodeText };
+}
+
+async function upsertLaporanBulananOtomatis({ bulan, tahun, userId }){
+  const iuranRw = await upsertPengeluaranIuranRw({ bulan, tahun, userId });
+  const ambulan = await upsertPengeluaranAmbulan({ bulan, tahun, userId });
+  return { iuranRw, ambulan };
+}
+
+async function upsertLaporanRangeOtomatis({ start, end, userId }){
+  const results = [];
+  for (let d = new Date(start.getFullYear(), start.getMonth(), 1); d < end; d = new Date(d.getFullYear(), d.getMonth() + 1, 1)) {
+    const bulanLaporan = new Date(d.getFullYear(), d.getMonth() + 1, 1);
+    results.push(await upsertLaporanBulananOtomatis({
+      bulan: bulanLaporan.getMonth() + 1,
+      tahun: bulanLaporan.getFullYear(),
+      userId
+    }));
+  }
+  return results;
 }
 
 async function buildReport(query = {}){
@@ -104,6 +175,8 @@ async function buildReport(query = {}){
   const showBelumBayar = String(query.showBelumBayar || query.show_belum_bayar || 'false') === 'true';
   const { start, end } = periodeRange({ bulan, tahun, periode });
 
+  if (query.userId) await upsertLaporanRangeOtomatis({ start, end, userId: query.userId });
+
   const saldoAll = await saldoSemuaKas();
   const saldo = filterVisibleSaldo(saldoAll);
   const totalSaldo = Object.values(saldo).reduce((a,b)=>a + Number(b || 0), 0);
@@ -113,7 +186,9 @@ async function buildReport(query = {}){
   }).sort({ tanggal: -1, createdAt: -1 }).lean();
   const totalDebet = transaksi.reduce((a,x)=>a + Number(x.debet || 0), 0);
   const totalKredit = transaksi.reduce((a,x)=>a + Number(x.kredit || 0), 0);
-  const iuranRwGabungan = await hitungIuranRwGabungan(start, end);
+  const iuranRwGabungan = transaksi
+    .filter(x => x.sumber === 'auto_iuran_rw')
+    .reduce((a,x)=>a + Number(x.kredit || 0) - Number(x.debet || 0), 0);
 
   let belumBayar = [];
   if (showBelumBayar) {
@@ -146,7 +221,7 @@ async function buildReport(query = {}){
 }
 
 router.get('/data', requireRole('admin'), async (req, res) => {
-  try { res.json(await buildReport(req.query)); }
+  try { res.json(await buildReport({ ...req.query, userId: req.session.user.id })); }
   catch (err) { res.status(500).json({ message: err.message || 'Gagal membuat laporan' }); }
 });
 
@@ -155,7 +230,7 @@ router.post('/generate-iuran-rw', requireRole('admin'), async (req, res) => {
     const now = new Date();
     const bulan = Number(req.body.bulan || req.query.bulan || now.getMonth() + 1);
     const tahun = Number(req.body.tahun || req.query.tahun || now.getFullYear());
-    const result = await upsertPengeluaranIuranRw({ bulan, tahun, userId: req.session.user.id });
+    const result = await upsertLaporanBulananOtomatis({ bulan, tahun, userId: req.session.user.id });
     res.json(result);
   } catch (err) {
     res.status(500).json({ message: err.message || 'Gagal membuat pengeluaran rutin Iuran RW' });
@@ -164,7 +239,7 @@ router.post('/generate-iuran-rw', requireRole('admin'), async (req, res) => {
 
 router.get('/pdf', requireRole('admin'), async (req, res) => {
   try {
-    const data = await buildReport(req.query);
+    const data = await buildReport({ ...req.query, userId: req.session.user.id });
     const { meta, saldo, totalSaldo, transaksi, totalDebet, totalKredit, belumBayar, iuranRwGabungan } = data;
     const fileName = `laporan-keuangan-rt02-${meta.periode}-${meta.bulan}-${meta.tahun}.pdf`;
     res.setHeader('Content-Type', 'application/pdf');

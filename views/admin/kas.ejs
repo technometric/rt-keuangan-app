@@ -1,1 +1,58 @@
-<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Kas</title><link rel="stylesheet" href="/css/style.css"></head><body><div class="app"><%- include('../partials_nav') %><main class="main"><div class="title">Transaksi Kas Manual</div><div class="panel"><h2 id="formKasTitle">Input Transaksi Kas Manual</h2><form id="formKas"><input type="hidden" name="kas_id"><div class="row"><select class="select" name="jenis_kas"><option value="kas_rt">Kas RT</option><option value="kas_sosial">Kas Sosial</option><option value="kas_donasi">Kas Donasi</option><option value="tabungan_sampah">Tabungan Sampah</option><option value="danus">Danus</option><option value="uang_satpam">Uang Satpam</option><option value="uang_sampah">Uang Sampah</option><option value="kas_rw">Kas RW</option><option value="santunan_kematian">Santunan Kematian</option></select><select class="select" name="tipe"><option value="debet">Debet / Uang Masuk</option><option value="kredit">Kredit / Uang Keluar</option></select><input class="input" name="nominal" type="number" placeholder="Nominal" required><input class="input" name="tanggal" type="date"></div><textarea name="keterangan" placeholder="Keterangan" required></textarea><div class="actions"><button id="btnKasSubmit" class="btn">Simpan Transaksi</button><button type="button" class="btn muted" onclick="resetKasForm()">Batal/Reset</button></div></form></div><div class="panel"><div class="table-scroll"><table><thead><tr><th>Tanggal</th><th>Jenis</th><th>Keterangan</th><th>Debet</th><th>Kredit</th><th>Saldo</th><th>Aksi</th></tr></thead><tbody id="kasRows"></tbody></table></div></div></main></div><script src="/js/app.js"></script><script>initKas()</script></body></html>
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Kas</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <div class="app">
+    <%- include('../partials_nav') %>
+    <main class="main">
+      <div class="title">Transaksi Kas Manual</div>
+      <div class="sub">Gunakan Kas RT untuk input manual di luar transaksi otomatis IWK, iuran RW, dan ambulan.</div>
+      <div class="panel">
+        <h2 id="formKasTitle">Input Transaksi Kas Manual</h2>
+        <form id="formKas">
+          <input type="hidden" name="kas_id">
+          <div class="row">
+            <select class="select" name="jenis_kas">
+              <option value="kas_rt">Kas RT</option>
+              <option value="kas_sosial">Kas Sosial</option>
+              <option value="kas_donasi">Kas Donasi</option>
+              <option value="tabungan_sampah">Tabungan Sampah</option>
+              <option value="danus">Danus</option>
+              <option value="uang_satpam">Uang Satpam</option>
+              <option value="uang_sampah">Uang Sampah</option>
+              <option value="kas_pkk">Kas PKK</option>
+              <option value="santunan_kematian">Santunan Kematian</option>
+            </select>
+            <select class="select" name="tipe">
+              <option value="debet">Debet / Uang Masuk</option>
+              <option value="kredit">Kredit / Uang Keluar</option>
+            </select>
+            <input class="input" name="nominal" type="number" placeholder="Nominal" required>
+            <input class="input" name="tanggal" type="datetime-local">
+          </div>
+          <textarea name="keterangan" placeholder="Keterangan" required></textarea>
+          <div class="actions">
+            <button id="btnKasSubmit" class="btn">Simpan Transaksi</button>
+            <button type="button" class="btn muted" onclick="resetKasForm()">Batal/Reset</button>
+          </div>
+        </form>
+      </div>
+      <div class="panel">
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th>Tanggal</th><th>Jenis</th><th>Keterangan</th><th>Debet</th><th>Kredit</th><th>Saldo</th><th>Aksi</th></tr></thead>
+            <tbody id="kasRows"></tbody>
+          </table>
+        </div>
+      </div>
+    </main>
+  </div>
+  <script src="/js/app.js"></script>
+  <script>initKas()</script>
+</body>
+</html>

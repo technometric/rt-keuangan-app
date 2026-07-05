@@ -1,1 +1,56 @@
-<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Iuran IWK</title><link rel="stylesheet" href="/css/style.css"></head><body><div class="app"><%- include('../partials_nav') %><main class="main"><div class="title">Iuran Wajib IWK</div><div class="panel"><form id="formIwk"><div class="row"><select class="select" name="warga" id="warga"></select><input class="input" name="nominal_bayar" type="number" placeholder="Nominal total bayar"><select class="select" name="metode_bayar"><option value="cash">Cash</option><option value="transfer">Transfer</option></select></div><div class="row"><select class="select" name="bulan" id="bulanMulai"></select><input class="input" name="tahun" id="tahunMulai" type="number" placeholder="Tahun"><input class="input" name="jumlah_bulan" type="number" min="1" max="24" value="1" placeholder="Jumlah bulan dibayar"></div><div class="row two"><input class="input" type="file" name="foto_bayar" accept="image/*"><textarea name="catatan_petugas" placeholder="Catatan"></textarea></div><button class="btn">Simpan</button></form><p id="msg" class="sub"></p></div><div class="panel"><table><thead><tr><th>Tanggal</th><th>Warga</th><th>Nominal</th><th>Status</th><th>Petugas</th></tr></thead><tbody id="riwayat"></tbody></table></div></main></div><script src="/js/app.js"></script><script>initPetugasIwk()</script></body></html>
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Iuran IWK</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <div class="app">
+    <%- include('../partials_nav') %>
+    <main class="main">
+      <div class="title">Iuran Wajib IWK</div>
+
+      <div class="panel">
+        <h2>Setting Tampilan Status IWK</h2>
+        <label class="check-pill inline-check">
+          <input id="settingTunggakanIwkLama" type="checkbox">
+          Tampilkan tunggakan IWK 12 bulan sebelumnya pada status pembayaran umum
+        </label>
+        <p id="settingTunggakanIwkLamaMsg" class="sub">Jika aktif, kartu merah di web umum bisa berarti belum bayar bulan berjalan atau ada tunggakan lama.</p>
+      </div>
+
+      <div class="panel">
+        <form id="formIwk">
+          <div class="row">
+            <select class="select" name="warga" id="warga"></select>
+            <input class="input" name="nominal_bayar" type="number" placeholder="Nominal total bayar">
+            <select class="select" name="metode_bayar"><option value="cash">Cash</option><option value="transfer">Transfer</option></select>
+          </div>
+          <div class="row">
+            <select class="select" name="bulan" id="bulanMulai"></select>
+            <input class="input" name="tahun" id="tahunMulai" type="number" placeholder="Tahun">
+            <input class="input" name="jumlah_bulan" type="number" min="1" max="24" value="1" placeholder="Jumlah bulan dibayar">
+          </div>
+          <div class="row two">
+            <input class="input" type="file" name="foto_bayar" accept="image/*">
+            <textarea name="catatan_petugas" placeholder="Catatan"></textarea>
+          </div>
+          <button class="btn">Simpan</button>
+        </form>
+        <p id="msg" class="sub"></p>
+      </div>
+
+      <div class="panel">
+        <table>
+          <thead><tr><th>Tanggal</th><th>Warga</th><th>Nominal</th><th>Status</th><th>Petugas</th></tr></thead>
+          <tbody id="riwayat"></tbody>
+        </table>
+      </div>
+    </main>
+  </div>
+  <script src="/js/app.js"></script>
+  <script>initPetugasIwk();initIwkLegacySetting();</script>
+</body>
+</html>

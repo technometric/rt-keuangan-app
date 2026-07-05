@@ -10,7 +10,6 @@ function naturalRumah(a, b) {
 
 router.get('/', requireRole('admin','petugas','umum'), async (req, res) => {
   const filter = {};
-  if (req.session.user.role === 'petugas') filter.area = req.session.user.area;
   const data = await WajibIwk.find(filter).lean();
   data.sort(naturalRumah);
   res.json(data);

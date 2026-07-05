@@ -6,8 +6,8 @@ const IuranWajib = require('../models/IuranWajib');
 const WajibIwk = require('../models/WajibIwk');
 const ParameterIwk = require('../models/ParameterIwk');
 const { requireRole } = require('../middleware/auth');
-const { bagiIwk, statusIwk } = require('../utils/iwk');
-const { buatTransaksiKas, hitungUlangSaldo } = require('../utils/kas');
+const { bagiIwk, minimumBayarIwk, statusIwk } = require('../utils/iwk');
+const { buatTransaksiKas, hitungUlangSaldoKas } = require('../utils/kas');
 const TransaksiKas = require('../models/TransaksiKas');
 const { tulisAudit } = require('../utils/audit');
 const router = express.Router();
@@ -35,7 +35,6 @@ router.get('/', requireRole('admin','petugas','umum'), async (req, res) => {
   if (bulan) filter.bulan = Number(bulan);
   if (tahun) filter.tahun = Number(tahun);
   let data = await IuranWajib.find(filter).populate('warga').populate('petugas','nama area').sort({ tanggal: -1 });
-  if (req.session.user.role === 'petugas') data = data.filter(x => x.warga?.area === req.session.user.area);
   res.json(data);
 });
 
@@ -43,10 +42,10 @@ router.post('/', requireRole('admin','petugas'), upload.single('foto_bayar'), as
   const param = await getParam();
   const warga = await WajibIwk.findById(req.body.warga);
   if (!warga) return res.status(404).json({ message: 'Warga tidak ditemukan' });
-  if (req.session.user.role === 'petugas' && warga.area !== req.session.user.area) return res.status(403).json({ message: 'Warga bukan area petugas ini' });
 
   const nominalTotal = Number(req.body.nominal_bayar || 0);
   const totalIwk = Number(param.total_iwk || 0);
+  const minimalIwk = minimumBayarIwk(param);
   const metode = req.body.metode_bayar || 'cash';
   const jumlahBulan = Math.max(1, Math.min(24, Number(req.body.jumlah_bulan || 1)));
   const bulanAwal = Number(req.body.bulan || (new Date().getMonth() + 1));
@@ -54,6 +53,7 @@ router.post('/', requireRole('admin','petugas'), upload.single('foto_bayar'), as
   const tanggalInput = req.body.tanggal ? new Date(req.body.tanggal) : new Date();
 
   if (metode === 'cash' && param.wajib_foto_cash && !req.file) return res.status(400).json({ message: 'Foto cash wajib diupload' });
+  if (nominalTotal < (minimalIwk * jumlahBulan)) return res.status(400).json({ message: `Minimal bayar IWK adalah ${minimalIwk.toLocaleString('id-ID')} per bulan (satpam/keamanan + sampah).` });
   if (nominalTotal < (totalIwk * jumlahBulan) && !req.body.catatan_petugas) return res.status(400).json({ message: 'Catatan wajib diisi jika belum bayar / bayar kurang' });
 
   let sisaBayar = nominalTotal;
@@ -108,7 +108,11 @@ router.put('/:id', requireRole('admin','petugas'), async (req, res) => {
   const nominalBaru = Number(req.body.nominal_bayar ?? iuran.nominal_bayar);
   const catatanBaru = req.body.catatan_petugas ?? iuran.catatan_petugas;
   const totalIwk = Number(param.total_iwk || 0);
+  const minimalIwk = minimumBayarIwk(param);
 
+  if (nominalBaru < minimalIwk) {
+    return res.status(400).json({ message: `Minimal bayar IWK adalah ${minimalIwk.toLocaleString('id-ID')} per bulan (satpam/keamanan + sampah).` });
+  }
   if (nominalBaru < totalIwk && !catatanBaru) {
     return res.status(400).json({ message: 'Catatan wajib diisi jika bayar kurang / belum bayar' });
   }
@@ -140,7 +144,7 @@ router.put('/:id', requireRole('admin','petugas'), async (req, res) => {
     }
   }
 
-  for (const jenis of jenisTerdampak) await hitungUlangSaldo(jenis);
+  for (const jenis of jenisTerdampak) await hitungUlangSaldoKas(jenis);
   await tulisAudit(req, 'UPDATE', 'Iuran IWK', `Edit nominal/catatan IWK ${iuran.warga?.nama || req.params.id}`);
   res.json({ message: 'Riwayat IWK berhasil diperbarui', data: iuran });
 });

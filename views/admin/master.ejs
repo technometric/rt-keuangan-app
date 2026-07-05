@@ -1,5 +1,88 @@
-<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Master Data</title><link rel="stylesheet" href="/css/style.css"></head><body><div class="app"><%- include('../partials_nav') %><main class="main"><div class="title">Master Data & Parameter IWK</div><div class="sub">Total IWK otomatis dihitung dari seluruh komponen parameter.</div>
-<div class="panel"><h2>Parameter IWK Aktif</h2><form id="formParam"><div class="row"><input class="input" name="uang_satpam" type="number" placeholder="Uang Satpam"><input class="input" name="uang_sampah" type="number" placeholder="Uang Sampah"><input class="input" name="kas_rw" type="number" placeholder="Kas RW"></div><div class="row"><input class="input" name="kas_rt" type="number" placeholder="Kas RT"><input class="input" name="kas_sosial" type="number" placeholder="Kas Sosial"><input class="input" name="santunan_kematian" type="number" placeholder="Santunan Kematian"></div><div class="param-total-card">Total IWK: <strong id="paramTotalText">Rp 0</strong></div><label><input type="checkbox" name="wajib_foto_cash"> Wajib foto saat cash</label><br><br><div class="actions"><button class="btn">Update Parameter Aktif</button><button type="button" class="btn orange" id="btnParamBaru">Simpan Sebagai Parameter Baru</button></div></form></div>
-<div class="panel"><h2>Riwayat Parameter IWK</h2><div class="table-scroll"><table><thead><tr><th>Tanggal</th><th>Total</th><th>Satpam</th><th>Sampah</th><th>Kas RW</th><th>Kas RT</th><th>Sosial</th><th>Santunan</th><th>Status</th></tr></thead><tbody id="parameterRows"></tbody></table></div></div>
-<div class="panel"><h2 id="formWargaTitle">Tambah Warga Wajib IWK</h2><form id="formWarga"><input type="hidden" name="warga_id"><div class="row"><input class="input" name="nama" placeholder="Nama" required><input class="input" name="nik" placeholder="NIK"><input class="input" name="hp" placeholder="HP"></div><div class="row"><input class="input" name="no_rumah" placeholder="No Rumah" required><select class="select" name="area"><option value="utara">Utara</option><option value="tengah">Tengah</option><option value="selatan">Selatan</option></select><button id="btnWargaSubmit" class="btn">Tambah Warga</button><button type="button" class="btn muted" onclick="resetWargaForm()">Batal/Reset</button></div></form></div>
-<div class="panel"><h2>Daftar Warga Wajib IWK</h2><div class="table-scroll"><table><thead><tr><th>No</th><th>No Rumah</th><th>Nama</th><th>Area</th><th>HP</th><th>Aksi</th></tr></thead><tbody id="wargaRows"></tbody></table></div></div></main></div><script src="/js/app.js"></script><script>initMaster()</script></body></html>
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Master Data</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <div class="app">
+    <%- include('../partials_nav') %>
+    <main class="main">
+      <div class="title">Master Data & Parameter IWK</div>
+      <div class="sub">Total IWK otomatis dihitung dari seluruh komponen parameter aktif.</div>
+
+      <div class="panel">
+        <h2>Parameter IWK Aktif</h2>
+        <form id="formParam">
+          <div class="row">
+            <label class="field-label">Uang Satpam / Keamanan<input class="input" name="uang_satpam" type="number" placeholder="Uang Satpam"></label>
+            <label class="field-label">Uang Sampah<input class="input" name="uang_sampah" type="number" placeholder="Uang Sampah"></label>
+            <label class="field-label">Kas PKK<input class="input" name="kas_pkk" type="number" placeholder="Kas PKK"></label>
+          </div>
+          <div class="row">
+            <label class="field-label">Kas RT<input class="input" name="kas_rt" type="number" placeholder="Kas RT"></label>
+            <label class="field-label">Kas Sosial<input class="input" name="kas_sosial" type="number" placeholder="Kas Sosial"></label>
+            <label class="field-label">Santunan Kematian<input class="input" name="santunan_kematian" type="number" placeholder="Santunan Kematian"></label>
+          </div>
+          <div class="row">
+            <label class="field-label">Jumlah KK Iuran RW<input class="input" name="jumlah_kk_iuran_rw" type="number" min="0" placeholder="75"></label>
+            <label class="field-label">Iuran Ambulan Bulanan<input class="input" name="iuran_ambulan_bulanan" type="number" min="0" placeholder="50000"></label>
+          </div>
+          <div class="param-total-card">
+            Total IWK: <strong id="paramTotalText">Rp 0</strong>
+            <span class="sub">Minimal bayar: <strong id="paramMinimumText">Rp 0</strong></span>
+          </div>
+          <label><input type="checkbox" name="wajib_foto_cash"> Wajib foto saat cash</label><br>
+          <label><input type="checkbox" name="tampil_tunggakan_umum"> Tampilkan tunggakan periode sebelumnya di web umum</label><br><br>
+          <div class="actions">
+            <button class="btn">Update Parameter Aktif</button>
+            <button type="button" class="btn orange" id="btnParamBaru">Simpan Sebagai Parameter Baru</button>
+          </div>
+        </form>
+      </div>
+
+      <div class="panel">
+        <h2>Riwayat Parameter IWK</h2>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th>Tanggal</th><th>Total</th><th>Satpam</th><th>Sampah</th><th>Kas PKK</th><th>Kas RT</th><th>Sosial</th><th>Santunan</th><th>KK RW</th><th>Tunggakan Umum</th><th>Status</th></tr></thead>
+            <tbody id="parameterRows"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h2 id="formWargaTitle">Tambah Warga Wajib IWK</h2>
+        <form id="formWarga">
+          <input type="hidden" name="warga_id">
+          <div class="row">
+            <input class="input" name="nama" placeholder="Nama" required>
+            <input class="input" name="nik" placeholder="NIK">
+            <input class="input" name="hp" placeholder="HP">
+          </div>
+          <div class="row">
+            <input class="input" name="no_rumah" placeholder="No Rumah" required>
+            <select class="select" name="area"><option value="utara">Utara</option><option value="tengah">Tengah</option><option value="selatan">Selatan</option></select>
+            <button id="btnWargaSubmit" class="btn">Tambah Warga</button>
+            <button type="button" class="btn muted" onclick="resetWargaForm()">Batal/Reset</button>
+          </div>
+        </form>
+      </div>
+
+      <div class="panel">
+        <h2>Daftar Warga Wajib IWK</h2>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th>No</th><th>No Rumah</th><th>Nama</th><th>Area</th><th>HP</th><th>Aksi</th></tr></thead>
+            <tbody id="wargaRows"></tbody>
+          </table>
+        </div>
+      </div>
+    </main>
+  </div>
+  <script src="/js/app.js"></script>
+  <script>initMaster()</script>
+</body>
+</html>
