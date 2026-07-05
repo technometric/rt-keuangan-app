@@ -52,3 +52,5 @@ dan akan ada laporan bulanan pemasukan iwk format pdf yg bisa d export untuk d s
 27. masuk petugas itu url/petugas
 28. input file photo d halaman input pembayaram iwk bisa d hid/show admin
 27. bug hasil export pdf pembayaran iwknya barisnya ga rapi
+28. admin bisa mengatur pilihan tampilan status pembayaran iwk d web umum, bayr, kurang, belum bayar dan semuanya, kalau d pilih semuanya maka tdak ada pilihan tampilan jadi nampil semua yg bayar, kurang dan blm bayar
+29. selektror bulan masih statis blm bisa pilih bulan d tampilan status pembayaran
