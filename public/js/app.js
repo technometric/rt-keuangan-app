@@ -180,11 +180,50 @@ async function deleteWarga(id){
 }
 
 async function loadIwk() {
-  const data = await api('/api/iuran-wajib');
+  const bulan = document.getElementById('riwayatBulan')?.value || '';
+  const tahun = document.getElementById('riwayatTahun')?.value || '';
+  const qs = new URLSearchParams();
+  if(bulan) qs.set('bulan', bulan);
+  if(tahun) qs.set('tahun', tahun);
+  let data = await api(`/api/iuran-wajib${qs.toString() ? '?' + qs.toString() : ''}`);
   const el = document.getElementById('riwayat');
   if (!el) return;
+  const q = (document.getElementById('riwayatSearch')?.value || '').trim().toLowerCase();
+  const nq = normalizeSearchText(q);
+  if(q) {
+    data = data.filter(x => {
+      const raw = `${x.warga?.nama || ''} ${x.warga?.no_rumah || ''} ${x.petugas?.nama || ''} ${x.catatan_petugas || ''}`.toLowerCase();
+      const normalized = normalizeSearchText(raw);
+      return raw.includes(q) || normalized.includes(nq);
+    });
+  }
   const withDelete = el.dataset.actions === 'delete';
-  el.innerHTML = data.map(x => `<tr><td>${new Date(x.tanggal).toLocaleDateString('id-ID')}</td><td>${esc(x.warga?.nama || '-')}</td><td>${rupiah(x.nominal_bayar)}<br><small>${bulanNama[(x.bulan || 1)-1]} ${x.tahun || ''}</small></td><td><span class="badge outline ${statusClass(x.status)}">${labelStatus(x.status)}</span></td><td>${esc(x.petugas?.nama || x.catatan_petugas || '-')}</td>${withDelete ? `<td><button class="mini-btn danger" type="button" onclick="deleteIwkRiwayat('${x._id}')">Hapus</button></td>` : ''}</tr>`).join('');
+  const infoField = el.dataset.info === 'catatan' ? 'catatan' : 'petugas';
+  el.innerHTML = data.length ? data.map(x => {
+    const info = infoField === 'catatan' ? (x.catatan_petugas || '-') : (x.petugas?.nama || '-');
+    return `<tr><td>${new Date(x.tanggal).toLocaleDateString('id-ID')}</td><td>${esc(x.warga?.nama || '-')}<br><small>${esc(x.warga?.no_rumah || '-')}</small></td><td>${rupiah(x.nominal_bayar)}<br><small>${bulanNama[(x.bulan || 1)-1]} ${x.tahun || ''}</small></td><td><span class="badge outline ${statusClass(x.status)}">${labelStatus(x.status)}</span></td><td>${esc(info)}</td>${withDelete ? `<td><button class="mini-btn danger" type="button" onclick="deleteIwkRiwayat('${x._id}')">Hapus</button></td>` : ''}</tr>`;
+  }).join('') : `<tr><td colspan="${withDelete ? 6 : 5}" class="empty-cell">Riwayat tidak ditemukan.</td></tr>`;
+}
+
+function setupRiwayatFilters(){
+  const bulan = document.getElementById('riwayatBulan');
+  const tahun = document.getElementById('riwayatTahun');
+  const search = document.getElementById('riwayatSearch');
+  if(!bulan && !tahun && !search) return;
+  const now = new Date();
+  if(bulan && !bulan.innerHTML.trim()){
+    bulan.innerHTML = `<option value="">Semua Bulan</option>` + bulanNama.map((b,i)=>`<option value="${i+1}">${b}</option>`).join('');
+    bulan.value = now.getMonth() + 1;
+    bulan.addEventListener('change', loadIwk);
+  }
+  if(tahun && !tahun.value){
+    tahun.value = now.getFullYear();
+    tahun.addEventListener('input', loadIwk);
+  }
+  if(search && !search.dataset.bound){
+    search.dataset.bound = 'true';
+    search.addEventListener('input', loadIwk);
+  }
 }
 
 async function deleteIwkRiwayat(id){
@@ -269,7 +308,7 @@ function bindIwkForm() {
   });
 }
 
-async function initPetugasIwk() { setupBulanMulai(); await setDefaultNominalIwk(); await loadWarga(); bindIwkForm(); await initRiwayatInputVisibility(); await initFotoInputVisibility(); await loadIwk(); await loadPetugasBulanIniTotal(); }
+async function initPetugasIwk() { setupBulanMulai(); setupRiwayatFilters(); await setDefaultNominalIwk(); await loadWarga(); bindIwkForm(); await initRiwayatInputVisibility(); await initFotoInputVisibility(); await loadIwk(); await loadPetugasBulanIniTotal(); }
 
 async function initRiwayatInputVisibility(){
   const panel = document.getElementById('riwayatIwkInputPanel');
@@ -353,6 +392,16 @@ function downloadAdminIwkMonthlyPdf(){
   const bulan = document.getElementById('adminIwkReportBulan')?.value || new Date().getMonth() + 1;
   const tahun = document.getElementById('adminIwkReportTahun')?.value || new Date().getFullYear();
   location.href = `/api/iuran-wajib/laporan-bulanan/pdf?bulan=${bulan}&tahun=${tahun}`;
+}
+
+function printRiwayatPetugas(){
+  const bulan = document.getElementById('riwayatBulan')?.value || '';
+  const tahun = document.getElementById('riwayatTahun')?.value || new Date().getFullYear();
+  if(!bulan) {
+    alert('Pilih bulan terlebih dahulu untuk cetak PDF riwayat IWK.');
+    return;
+  }
+  location.href = `/api/export/riwayat-iwk-petugas/pdf?bulan=${bulan}&tahun=${tahun}`;
 }
 
 async function initKas() {
