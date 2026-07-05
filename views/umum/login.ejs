@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>Login SIKERT02</title>
-  <link rel="stylesheet" href="/css/style.css">
+  <link rel="stylesheet" href="/css/style.css?v=<%= assetVersion %>">
 </head>
 <body>
   <div class="login-wrap">
@@ -22,7 +22,7 @@
     </div>
   </div>
   <script>
-    const nextUrl = '<%= next || "/" %>';
+    const nextUrl = '<%= next || "/umum/dashboard" %>';
     async function loadCaptcha(){
       const r = await fetch('/api/auth/captcha');
       const d = await r.json();

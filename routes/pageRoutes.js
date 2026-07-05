@@ -2,26 +2,27 @@ const express = require('express');
 const { pageRole, requirePublicWarga } = require('../middleware/auth');
 const router = express.Router();
 
-router.get('/', requirePublicWarga, (req, res) => res.render('umum/dashboard', { user: req.session.user || null, publicWarga: req.session.publicWarga, publicMode: true }));
-router.get('/login', (req, res) => res.render('login', { next: req.query.next || '' }));
+router.get('/', (req, res) => res.redirect('/umum/login'));
+router.get('/login', (req, res) => {
+  delete req.session.user;
+  res.render('login', { next: req.query.next || '' });
+});
 router.get('/umum/login', (req, res) => {
-  if (req.session.publicWarga) return res.redirect('/');
-  res.render('umum/login', { next: req.query.next || '/' });
+  delete req.session.publicWarga;
+  res.render('umum/login', { next: req.query.next || '/umum/dashboard' });
 });
 router.get(['/admin', '/admin/'], (req, res) => {
-  if (!req.session.user) return res.render('login', { next: '/admin/dashboard', loginMode: 'admin' });
-  if (req.session.user.role !== 'admin') return res.redirect('/');
-  return res.redirect('/admin/dashboard');
+  delete req.session.user;
+  return res.render('login', { next: '/admin/dashboard', loginMode: 'admin' });
 });
 
 router.get(['/admin/login', '/admin/login/'], (req, res) => {
-  if (req.session.user && req.session.user.role === 'admin') return res.redirect('/admin/dashboard');
+  delete req.session.user;
   return res.render('login', { next: '/admin/dashboard', loginMode: 'admin' });
 });
 router.get(['/petugas', '/petugas/'], (req, res) => {
-  if (!req.session.user) return res.redirect('/login?next=/petugas/dashboard');
-  if (req.session.user.role !== 'petugas') return res.redirect('/');
-  return res.redirect('/petugas/dashboard');
+  delete req.session.user;
+  return res.render('login', { next: '/petugas/dashboard', loginMode: 'petugas' });
 });
 router.get('/admin/dashboard', pageRole('admin'), (req, res) => res.render('admin/dashboard', { user: req.session.user }));
 router.get('/admin/master', pageRole('admin'), (req, res) => res.render('admin/master', { user: req.session.user }));
@@ -31,5 +32,5 @@ router.get('/admin/users', pageRole('admin'), (req, res) => res.render('admin/us
 router.get('/admin/maintenance', pageRole('admin'), (req, res) => res.render('admin/maintenance', { user: req.session.user }));
 router.get('/admin/laporan-keuangan', pageRole('admin'), (req, res) => res.render('admin/laporan-keuangan', { user: req.session.user }));
 router.get('/petugas/dashboard', pageRole('petugas'), (req, res) => res.render('petugas/dashboard', { user: req.session.user }));
-router.get('/umum/dashboard', (req, res) => res.redirect('/'));
+router.get('/umum/dashboard', requirePublicWarga, (req, res) => res.render('umum/dashboard', { user: req.session.user || null, publicWarga: req.session.publicWarga, publicMode: true }));
 module.exports = router;

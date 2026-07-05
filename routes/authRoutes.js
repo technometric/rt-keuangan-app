@@ -59,7 +59,7 @@ router.post('/public-login', async (req, res) => {
   const warga = rows.find(w => normalizeRumah(w.no_rumah) === username);
   if (!warga) return res.status(401).json({ message: 'Nomor rumah tidak ditemukan' });
   req.session.publicWarga = { id: warga._id, nama: warga.nama, no_rumah: warga.no_rumah };
-  req.session.save(() => res.json({ message: 'Login umum berhasil', redirect: '/', warga: req.session.publicWarga }));
+  req.session.save(() => res.json({ message: 'Login umum berhasil', redirect: '/umum/dashboard', warga: req.session.publicWarga }));
 });
 
 router.post('/public-logout', (req, res) => {
