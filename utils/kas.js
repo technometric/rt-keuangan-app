@@ -25,7 +25,7 @@ async function hitungUlangSaldoKas(jenis_kas) {
 }
 
 async function saldoSemuaKas() {
-  const jenisList = ['uang_satpam','uang_sampah','kas_rw','kas_rt','kas_sosial','santunan_kematian','kas_donasi','tabungan_sampah','danus'];
+  const jenisList = ['uang_satpam','uang_sampah','kas_pkk','kas_rw','kas_rt','kas_sosial','santunan_kematian','kas_donasi','tabungan_sampah','danus'];
   const result = {};
   for (const jenis of jenisList) result[jenis] = await saldoTerakhir(jenis);
   return result;

@@ -17,12 +17,12 @@
       <a href="/">Tampilan Umum</a>
     <% } %>
     <% if(user){ %><a href="#" onclick="logout()">Logout</a><% } %>
-    <small id="appVersion" class="menu-version">SIKERT</small>
+    <small class="app-version-text menu-version">SIKERT</small>
   </div>
-  <div id="appVersion" class="version-box">SIKERT</div>
+  <div class="app-version-text version-box">SIKERT</div>
 </div>
 <script>
 async function logout(){await fetch('/api/auth/logout',{method:'POST'});location.href='/'}
 function togglePrivateMenu(){ document.getElementById('privateMenu')?.classList.toggle('hide'); }
-fetch('/api/info/version').then(r=>r.json()).then(d=>{const el=document.getElementById('appVersion'); if(el) el.textContent=`${d.name} v${d.version}`}).catch(()=>{});
+fetch('/api/info/version').then(r=>r.json()).then(d=>{document.querySelectorAll('.app-version-text').forEach(el=>el.textContent=`${d.name} v${d.version}`)}).catch(()=>{});
 </script>

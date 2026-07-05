@@ -1,5 +1,5 @@
 <!doctype html>
-<html>
+<html lang="id">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
@@ -17,27 +17,27 @@
         <input id="captchaAnswer" class="input" inputmode="numeric" placeholder="Captcha">
         <button class="mini-btn" type="button" onclick="loadCaptcha()">Ganti</button>
       </div>
-      <button class="btn full" onclick="login()">Masuk</button>
+      <button class="btn full" onclick="loginPublic()">Masuk</button>
       <p id="msg" class="sub login-msg"></p>
     </div>
   </div>
   <script>
-    const nextUrl = '<%= next || "" %>';
+    const nextUrl = '<%= next || "/" %>';
     async function loadCaptcha(){
       const r = await fetch('/api/auth/captcha');
       const d = await r.json();
       captchaQuestion.textContent = d.question || '-';
       captchaAnswer.value = '';
     }
-    async function login(){
-      const r=await fetch('/api/auth/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username:username.value,password:password.value,captcha_answer:captchaAnswer.value})});
-      const d=await r.json();
-      if(!r.ok){msg.textContent=d.message;await loadCaptcha();return}
-      if(nextUrl) return location.href=nextUrl;
-      if(d.redirect) return location.href=d.redirect;
-      if(d.user.role==='admin') return location.href='/admin/dashboard';
-      if(d.user.role==='petugas') return location.href='/petugas/dashboard';
-      location.href='/';
+    async function loginPublic(){
+      const r = await fetch('/api/auth/public-login', {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({ username: username.value, password: password.value, captcha_answer: captchaAnswer.value })
+      });
+      const d = await r.json();
+      if(!r.ok){ msg.textContent = d.message || 'Login gagal'; await loadCaptcha(); return; }
+      location.href = nextUrl || d.redirect || '/';
     }
     loadCaptcha();
   </script>

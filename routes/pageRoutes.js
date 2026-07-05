@@ -1,9 +1,13 @@
 const express = require('express');
-const { pageRole } = require('../middleware/auth');
+const { pageRole, requirePublicWarga } = require('../middleware/auth');
 const router = express.Router();
 
-router.get('/', (req, res) => res.render('umum/dashboard', { user: req.session.user || null, publicMode: true }));
+router.get('/', requirePublicWarga, (req, res) => res.render('umum/dashboard', { user: req.session.user || null, publicWarga: req.session.publicWarga, publicMode: true }));
 router.get('/login', (req, res) => res.render('login', { next: req.query.next || '' }));
+router.get('/umum/login', (req, res) => {
+  if (req.session.publicWarga) return res.redirect('/');
+  res.render('umum/login', { next: req.query.next || '/' });
+});
 router.get(['/admin', '/admin/'], (req, res) => {
   if (!req.session.user) return res.render('login', { next: '/admin/dashboard', loginMode: 'admin' });
   if (req.session.user.role !== 'admin') return res.redirect('/');

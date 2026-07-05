@@ -18,6 +18,7 @@ const IuranWajibSchema = new mongoose.Schema({
   rincian: {
     uang_satpam: { type: Number, default: 0 },
     uang_sampah: { type: Number, default: 0 },
+    kas_pkk: { type: Number, default: 0 },
     kas_rw: { type: Number, default: 0 },
     kas_rt: { type: Number, default: 0 },
     kas_sosial: { type: Number, default: 0 },
