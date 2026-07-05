@@ -6,6 +6,7 @@ const router = express.Router();
 
 const keys = ['uang_satpam','uang_sampah','kas_pkk','kas_rt','kas_sosial','santunan_kematian'];
 const publicKasKeys = ['kas_rt','kas_sosial','kas_donasi','tabungan_sampah','santunan_kematian','danus'];
+const publicIwkStatusFilters = ['bayar', 'kurang', 'belum_bayar', 'semua'];
 function boolFromBody(value, fallback = false) {
   if (value === undefined) return fallback;
   return value === true || value === 'true' || value === 'on' || value === '1';
@@ -29,6 +30,7 @@ function normalizePayload(body = {}, old = {}) {
     : body.tampil_tunggakan_iwk_lama === true || body.tampil_tunggakan_iwk_lama === 'true' || body.tampil_tunggakan_iwk_lama === 'on';
   payload.tampil_riwayat_iwk_input = boolFromBody(body.tampil_riwayat_iwk_input, old.tampil_riwayat_iwk_input !== false);
   payload.tampil_foto_iwk_input = boolFromBody(body.tampil_foto_iwk_input, old.tampil_foto_iwk_input !== false);
+  payload.public_iwk_status_filter = publicIwkStatusFilters.includes(body.public_iwk_status_filter) ? body.public_iwk_status_filter : (old.public_iwk_status_filter || 'belum_bayar');
   payload.public_kas_visible = {};
   for (const key of publicKasKeys) {
     payload.public_kas_visible[key] = boolFromBody(body[`public_kas_${key}`], old.public_kas_visible?.[key] !== false);
@@ -59,6 +61,7 @@ async function getParam() {
   }
   if (param.tampil_riwayat_iwk_input === undefined) param.tampil_riwayat_iwk_input = true;
   if (param.tampil_foto_iwk_input === undefined) param.tampil_foto_iwk_input = true;
+  if (!publicIwkStatusFilters.includes(param.public_iwk_status_filter)) param.public_iwk_status_filter = 'belum_bayar';
   if (changedPublicKas) param.markModified('public_kas_visible');
   await param.save();
   return param;
@@ -86,6 +89,15 @@ router.put('/foto-iwk-input', requireRole('admin'), async (req, res) => {
   await param.save();
   await tulisAudit(req, 'UPDATE', 'Parameter IWK', `Input foto IWK ${param.tampil_foto_iwk_input ? 'ditampilkan' : 'disembunyikan'}`);
   res.json({ message: 'Setting input foto IWK tersimpan', tampil_foto_iwk_input: param.tampil_foto_iwk_input });
+});
+
+router.put('/status-iwk-umum', requireRole('admin'), async (req, res) => {
+  const param = await getParam();
+  const value = publicIwkStatusFilters.includes(req.body.public_iwk_status_filter) ? req.body.public_iwk_status_filter : 'belum_bayar';
+  param.public_iwk_status_filter = value;
+  await param.save();
+  await tulisAudit(req, 'UPDATE', 'Parameter IWK', `Filter status IWK umum ${value}`);
+  res.json({ message: 'Setting status IWK umum tersimpan', public_iwk_status_filter: value });
 });
 
 router.get('/', requireRole('admin','petugas'), async (req, res) => res.json(await getParam()));

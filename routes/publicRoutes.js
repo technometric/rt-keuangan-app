@@ -80,6 +80,7 @@ router.get('/iwk-status-cards', async (req, res) => {
   const tahun = Number(req.query.tahun || now.getFullYear());
   const param = await ParameterIwk.findOne({ aktif: true }).sort({ createdAt: -1 }).lean();
   const tampilTunggakanLama = !!param?.tampil_tunggakan_iwk_lama;
+  const statusFilter = ['bayar', 'kurang', 'belum_bayar', 'semua'].includes(param?.public_iwk_status_filter) ? param.public_iwk_status_filter : 'belum_bayar';
 
   const periods = [{ ...tambahBulan(bulan, tahun, 0), jenis: 'berjalan' }];
   for (let i = 1; i <= 12; i++) periods.push({ ...tambahBulan(bulan, tahun, -i), jenis: 'lama' });
@@ -142,6 +143,7 @@ router.get('/iwk-status-cards', async (req, res) => {
     tahun,
     periode: periodeLabel(bulan, tahun),
     tampil_tunggakan_lama: tampilTunggakanLama,
+    public_iwk_status_filter: statusFilter,
     previous_range: periods.length > 1 ? `${periods[1].label || periodeLabel(periods[1].bulan, periods[1].tahun)} - ${periods[12].label || periodeLabel(periods[12].bulan, periods[12].tahun)}` : '',
     data
   });

@@ -523,9 +523,7 @@ document.addEventListener('click', e => {
 });
 
 async function initIwkYearView(){
-  const sel = document.getElementById('iwkPeriodMode');
-  iwkPeriodMode = String(new Date().getMonth() + 1);
-  if(sel) sel.value = iwkPeriodMode;
+  setupMonthYearControls('iwkStatusBulan', 'iwkStatusTahun');
   await loadIwkYear();
 }
 function setIwkPeriodMode(value){ iwkPeriodMode = value; renderIwkYear(); }
@@ -550,11 +548,17 @@ async function loadTunggakanSebelumnya(){
 async function loadIwkYear(){
   const text = document.getElementById('iwkYearText');
   const d = new Date();
-  const res = await api(`/api/public/iwk-status-cards?bulan=${d.getMonth()+1}&tahun=${d.getFullYear()}`);
+  const bulan = document.getElementById('iwkStatusBulan')?.value || d.getMonth() + 1;
+  const tahun = document.getElementById('iwkStatusTahun')?.value || d.getFullYear();
+  const res = await api(`/api/public/iwk-status-cards?bulan=${bulan}&tahun=${tahun}`);
   iwkYearData = res.data || [];
+  iwkFilter = res.public_iwk_status_filter || 'belum_bayar';
   if(text) text.textContent = res.periode || `${bulanNama[d.getMonth()]} ${d.getFullYear()}`;
   const note = document.getElementById('iwkStatusNote');
   if(note) note.textContent = res.tampil_tunggakan_lama ? 'Kartu merah bisa berarti belum bayar bulan berjalan atau masih ada tunggakan 12 bulan sebelumnya.' : 'Kartu mengikuti status pembayaran IWK bulan berjalan.';
+  const filterWrap = document.getElementById('statusFilterWrap');
+  if(filterWrap) filterWrap.classList.toggle('hide', iwkFilter === 'semua');
+  document.querySelectorAll('.filter-pill').forEach(btn => btn.classList.toggle('active', btn.dataset.status === iwkFilter));
   renderIwkYear();
 }
 function rowMatchesFilter(row){
@@ -616,10 +620,12 @@ async function initIwkLegacySetting(){
   const toggle = document.getElementById('settingTunggakanIwkLama');
   const riwayatToggle = document.getElementById('settingRiwayatIwkInput');
   const fotoToggle = document.getElementById('settingFotoIwkInput');
+  const statusSelect = document.getElementById('settingStatusIwkUmum');
   const msg = document.getElementById('settingTunggakanIwkLamaMsg');
   const riwayatMsg = document.getElementById('settingRiwayatIwkInputMsg');
   const fotoMsg = document.getElementById('settingFotoIwkInputMsg');
-  if(!toggle && !riwayatToggle && !fotoToggle) return;
+  const statusMsg = document.getElementById('settingStatusIwkUmumMsg');
+  if(!toggle && !riwayatToggle && !fotoToggle && !statusSelect) return;
   const p = await api('/api/parameter-iwk');
   if(toggle){
     toggle.checked = !!p.tampil_tunggakan_iwk_lama;
@@ -653,6 +659,17 @@ async function initIwkLegacySetting(){
       });
       if(fotoMsg) fotoMsg.textContent = data.message || 'Setting tersimpan';
       await initFotoInputVisibility();
+    });
+  }
+  if(statusSelect){
+    statusSelect.value = p.public_iwk_status_filter || 'belum_bayar';
+    statusSelect.addEventListener('change', async () => {
+      const data = await api('/api/parameter-iwk/status-iwk-umum', {
+        method: 'PUT',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({ public_iwk_status_filter: statusSelect.value })
+      });
+      if(statusMsg) statusMsg.textContent = data.message || 'Setting tersimpan';
     });
   }
 }

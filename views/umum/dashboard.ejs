@@ -43,11 +43,13 @@
           <p id="iwkStatusNote">Kartu mengikuti status pembayaran IWK bulan berjalan.</p>
         </div>
         <div class="year-control stacked-control">
+          <select id="iwkStatusBulan" class="select mini-select" onchange="loadIwkYear()"></select>
+          <input id="iwkStatusTahun" class="input mini-input" type="number" onchange="loadIwkYear()">
           <strong id="iwkYearText"></strong>
         </div>
       </div>
 
-      <div class="status-filter">
+      <div id="statusFilterWrap" class="status-filter">
         <button class="filter-pill green" data-status="bayar" onclick="setIwkFilter('bayar', this)">Bayar</button>
         <button class="filter-pill orange" data-status="kurang" onclick="setIwkFilter('kurang', this)">Kurang</button>
         <button class="filter-pill red active" data-status="belum_bayar" onclick="setIwkFilter('belum_bayar', this)">Blm Bayar</button>
