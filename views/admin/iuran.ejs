@@ -85,10 +85,29 @@
       </div>
 
       <div id="riwayatIwkInputPanel" class="panel">
-        <table>
-          <thead><tr><th>Tanggal</th><th>Warga</th><th>Nominal</th><th>Status</th><th>Petugas</th><th>Aksi</th></tr></thead>
-          <tbody id="riwayat" data-actions="delete"></tbody>
-        </table>
+        <div class="table-toolbar">
+          <div>
+            <h2>Riwayat IWK</h2>
+            <p class="sub">Filter bulan/tahun atau cari baris yang akan dihapus.</p>
+          </div>
+          <div class="toolbar-actions">
+            <label class="field-label compact-field">Bulan
+              <select id="riwayatBulan" class="select mini-select"></select>
+            </label>
+            <label class="field-label compact-field">Tahun
+              <input id="riwayatTahun" class="input mini-input" type="number">
+            </label>
+            <label class="field-label compact-field search-field">Cari
+              <input id="riwayatSearch" class="input mini-input" type="search" placeholder="Nama / rumah / petugas" autocomplete="off">
+            </label>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Tanggal</th><th>Warga</th><th>Nominal</th><th>Status</th><th>Petugas</th><th>Aksi</th></tr></thead>
+            <tbody id="riwayat" data-actions="delete" data-info="petugas"></tbody>
+          </table>
+        </div>
       </div>
     </main>
   </div>
