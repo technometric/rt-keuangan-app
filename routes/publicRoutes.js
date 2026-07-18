@@ -1,5 +1,6 @@
 const express = require('express');
 const IuranWajib = require('../models/IuranWajib');
+const TransaksiKas = require('../models/TransaksiKas');
 const WajibIwk = require('../models/WajibIwk');
 const ParameterIwk = require('../models/ParameterIwk');
 const TunggakanIwk = require('../models/TunggakanIwk');
@@ -28,17 +29,51 @@ function periodeLabel(bulan, tahun) {
   const nama = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
   return `${nama[Number(bulan) - 1]} ${tahun}`;
 }
-
-router.get('/saldo', async (req, res) => {
-  const saldo = await saldoSemuaKas();
+function bulanTerakhirRange(periode = 1) {
+  const end = new Date();
+  const start = new Date(end);
+  start.setMonth(start.getMonth() - periode);
+  return { start, end };
+}
+async function publicKasKeys() {
   const param = await ParameterIwk.findOne({ aktif: true }).sort({ createdAt: -1 }).lean();
   const visible = param?.public_kas_visible || {};
   const tampilUmum = ['kas_rt','kas_sosial','kas_donasi','tabungan_sampah','santunan_kematian','danus'];
+  return tampilUmum.filter(k => visible[k] !== false);
+}
+
+router.get('/saldo', async (req, res) => {
+  const saldo = await saldoSemuaKas();
+  const tampilUmum = await publicKasKeys();
   const filtered = {};
-  tampilUmum.forEach(k => {
-    if (visible[k] !== false) filtered[k] = saldo[k] || 0;
-  });
+  tampilUmum.forEach(k => filtered[k] = saldo[k] || 0);
   res.json(filtered);
+});
+
+router.get('/pengeluaran-bulan-terakhir', async (req, res) => {
+  const { start, end } = bulanTerakhirRange(1);
+  const jenisKas = await publicKasKeys();
+  const rows = await TransaksiKas.find({
+    jenis_kas: { $in: jenisKas },
+    kredit: { $gt: 0 },
+    tanggal: { $gte: start, $lte: end }
+  }).sort({ tanggal: -1, createdAt: -1 }).limit(300).lean();
+  const total = rows.reduce((sum, row) => sum + Number(row.kredit || 0), 0);
+  res.json({ total, start, end, rows });
+});
+
+router.get('/donasi', async (req, res) => {
+  const jenisKas = await publicKasKeys();
+  if (!jenisKas.includes('kas_donasi')) return res.status(404).json({ message: 'Info donasi tidak ditampilkan untuk umum' });
+  const periode = [1, 3, 12].includes(Number(req.query.periode)) ? Number(req.query.periode) : 1;
+  const { start, end } = bulanTerakhirRange(periode);
+  const rows = await TransaksiKas.find({
+    jenis_kas: 'kas_donasi',
+    debet: { $gt: 0 },
+    tanggal: { $gte: start, $lte: end }
+  }).sort({ tanggal: -1, createdAt: -1 }).limit(300).lean();
+  const total = rows.reduce((sum, row) => sum + Number(row.debet || 0), 0);
+  res.json({ periode, total, start, end, rows });
 });
 
 router.get('/iuran-wajib', async (req, res) => {

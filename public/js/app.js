@@ -67,7 +67,106 @@ async function loadSaldo() {
   if (!el) return;
 
   const cardClass = isPublic() ? 'public-money-card' : 'card';
-  el.innerHTML = Object.entries(saldo).map(([k,v]) => `<div class="${cardClass}"><h3>${nice(k)}</h3><div class="money">${rupiah(v)}</div></div>`).join('');
+  const saldoCards = Object.entries(saldo).map(([k,v]) => {
+    if(isPublic() && k === 'kas_donasi') {
+      return `<button class="${cardClass} clickable-money-card donation-card" type="button" onclick="showDonasiDetail()"><h3>Info Donasi</h3><div class="money">${rupiah(v)}</div><span>Klik untuk daftar penyumbang</span></button>`;
+    }
+    return `<div class="${cardClass}"><h3>${nice(k)}</h3><div class="money">${rupiah(v)}</div></div>`;
+  });
+  if(isPublic()) {
+    try {
+      const pengeluaran = await api('/api/public/pengeluaran-bulan-terakhir');
+      saldoCards.push(`
+        <button class="${cardClass} clickable-money-card expense-card" type="button" onclick="showPengeluaranDetail()">
+          <h3>Pengeluaran 1 Bulan Terakhir</h3>
+          <div class="money">${rupiah(pengeluaran.total || 0)}</div>
+          <span>${Number(pengeluaran.rows?.length || 0).toLocaleString('id-ID')} transaksi · Klik untuk detail</span>
+        </button>
+      `);
+      window.publicPengeluaranTerakhir = pengeluaran;
+    } catch(e) {}
+  }
+  el.innerHTML = saldoCards.join('');
+}
+
+async function showPengeluaranDetail(){
+  const modal = document.getElementById('pengeluaranModal');
+  if(!modal) return;
+  let data = window.publicPengeluaranTerakhir;
+  if(!data) data = await api('/api/public/pengeluaran-bulan-terakhir');
+  const rows = data.rows || [];
+  const periode = `${new Date(data.start).toLocaleDateString('id-ID')} - ${new Date(data.end).toLocaleDateString('id-ID')}`;
+  const detailRows = rows.length ? rows.map(x => `
+    <tr>
+      <td>${new Date(x.tanggal).toLocaleDateString('id-ID')}</td>
+      <td>${nice(x.jenis_kas)}</td>
+      <td>${esc(x.keterangan || '-')}</td>
+      <td>${rupiah(x.kredit || 0)}</td>
+    </tr>
+  `).join('') : '<tr><td colspan="4" class="empty-cell">Belum ada pengeluaran dalam 1 bulan terakhir.</td></tr>';
+  modal.innerHTML = `
+    <div class="iwk-modal-backdrop" onclick="closePengeluaranDetail()"></div>
+    <div class="iwk-modal-card expense-modal-card">
+      <div class="modal-head">
+        <div><h3>Detail Pengeluaran</h3><p>${periode} · Total ${rupiah(data.total || 0)}</p></div>
+        <button type="button" class="mini-btn" onclick="closePengeluaranDetail()">Tutup</button>
+      </div>
+      <div class="report-table-wrap">
+        <table class="report-table compact-table">
+          <thead><tr><th>Tanggal</th><th>Kas</th><th>Keterangan</th><th>Nominal</th></tr></thead>
+          <tbody>${detailRows}</tbody>
+        </table>
+      </div>
+    </div>`;
+  modal.classList.remove('hide');
+}
+function closePengeluaranDetail(){
+  const modal = document.getElementById('pengeluaranModal');
+  if(modal) modal.classList.add('hide');
+}
+
+async function showDonasiDetail(periode = 1){
+  const modal = document.getElementById('donasiModal');
+  if(!modal) return;
+  const data = await api(`/api/public/donasi?periode=${periode}`);
+  const rows = data.rows || [];
+  const periodeText = `${new Date(data.start).toLocaleDateString('id-ID')} - ${new Date(data.end).toLocaleDateString('id-ID')}`;
+  const detailRows = rows.length ? rows.map((x, i) => `
+    <tr>
+      <td>${i + 1}</td>
+      <td>${new Date(x.tanggal).toLocaleDateString('id-ID')}</td>
+      <td>${esc(x.keterangan || 'Donatur')}</td>
+      <td>${rupiah(x.debet || 0)}</td>
+    </tr>
+  `).join('') : '<tr><td colspan="4" class="empty-cell">Belum ada donasi sukarela pada periode ini.</td></tr>';
+  modal.innerHTML = `
+    <div class="iwk-modal-backdrop" onclick="closeDonasiDetail()"></div>
+    <div class="iwk-modal-card expense-modal-card">
+      <div class="modal-head">
+        <div><h3>Info Donasi</h3><p>${periodeText} · Total ${rupiah(data.total || 0)}</p></div>
+        <button type="button" class="mini-btn" onclick="closeDonasiDetail()">Tutup</button>
+      </div>
+      <div class="modal-toolbar">
+        <label class="compact-field">Periode
+          <select class="select mini-select" onchange="showDonasiDetail(this.value)">
+            <option value="1" ${Number(data.periode) === 1 ? 'selected' : ''}>1 bulan terakhir</option>
+            <option value="3" ${Number(data.periode) === 3 ? 'selected' : ''}>3 bulan terakhir</option>
+            <option value="12" ${Number(data.periode) === 12 ? 'selected' : ''}>12 bulan terakhir</option>
+          </select>
+        </label>
+      </div>
+      <div class="report-table-wrap">
+        <table class="report-table compact-table">
+          <thead><tr><th>No</th><th>Tanggal</th><th>Penyumbang</th><th>Nominal</th></tr></thead>
+          <tbody>${detailRows}</tbody>
+        </table>
+      </div>
+    </div>`;
+  modal.classList.remove('hide');
+}
+function closeDonasiDetail(){
+  const modal = document.getElementById('donasiModal');
+  if(modal) modal.classList.add('hide');
 }
 
 async function loadIwkProgress(targetId = 'iwkProgressCard') {
@@ -761,8 +860,10 @@ async function loadLaporanKeuangan(){
   if(!card) return;
   const periode = document.getElementById('reportPeriode')?.value || '1';
   const showBelum = document.getElementById('showBelumBayar')?.checked ? 'true' : 'false';
+  const autoIuranRw = document.getElementById('autoIuranRw')?.checked ? 'true' : 'false';
+  const autoAmbulan = document.getElementById('autoAmbulan')?.checked ? 'true' : 'false';
   const d = new Date();
-  const data = await api(`/api/laporan-keuangan/data?periode=${periode}&bulan=${d.getMonth()+1}&tahun=${d.getFullYear()}&showBelumBayar=${showBelum}`);
+  const data = await api(`/api/laporan-keuangan/data?periode=${periode}&bulan=${d.getMonth()+1}&tahun=${d.getFullYear()}&showBelumBayar=${showBelum}&autoIuranRw=${autoIuranRw}&autoAmbulan=${autoAmbulan}`);
   document.getElementById('reportPeriodText').textContent = data.meta?.periodeLabel || '-';
   document.getElementById('reportGeneratedAt').textContent = data.meta?.generatedAt || new Date().toLocaleString('id-ID');
   document.getElementById('reportTotalSaldo').textContent = rupiah(data.totalSaldo || 0);
@@ -805,14 +906,22 @@ async function loadLaporanKeuangan(){
 function laporanQueryString(){
   const periode = document.getElementById('reportPeriode')?.value || '1';
   const showBelum = document.getElementById('showBelumBayar')?.checked ? 'true' : 'false';
+  const autoIuranRw = document.getElementById('autoIuranRw')?.checked ? 'true' : 'false';
+  const autoAmbulan = document.getElementById('autoAmbulan')?.checked ? 'true' : 'false';
   const d = new Date();
-  return `periode=${periode}&bulan=${d.getMonth()+1}&tahun=${d.getFullYear()}&showBelumBayar=${showBelum}`;
+  return `periode=${periode}&bulan=${d.getMonth()+1}&tahun=${d.getFullYear()}&showBelumBayar=${showBelum}&autoIuranRw=${autoIuranRw}&autoAmbulan=${autoAmbulan}`;
 }
 async function generateIuranRwBulanan(){
-  if(!confirm('Buat/perbarui transaksi pengeluaran Kas RT untuk iuran sampah+satpam ke RW dan ambulan bulan sebelumnya?')) return;
+  const autoIuranRw = document.getElementById('autoIuranRw')?.checked ? 'true' : 'false';
+  const autoAmbulan = document.getElementById('autoAmbulan')?.checked ? 'true' : 'false';
+  if(autoIuranRw !== 'true' && autoAmbulan !== 'true') {
+    alert('Centang Kredit Iuran RW atau Kredit Ambulan terlebih dahulu.');
+    return;
+  }
+  if(!confirm('Buat/perbarui transaksi pengeluaran Kas RT sesuai kredit otomatis yang dicentang?')) return;
   const d = new Date();
-  const data = await api(`/api/laporan-keuangan/generate-iuran-rw?bulan=${d.getMonth()+1}&tahun=${d.getFullYear()}`, {method:'POST'});
-  alert(`Otomatisasi laporan bulanan diperbarui.\nIuran RW: ${rupiah(data.iuranRw?.total || 0)}\nAmbulan: ${rupiah(data.ambulan?.total || 0)}\nPeriode: ${data.iuranRw?.periodeText || data.ambulan?.periodeText || '-'}`);
+  const data = await api(`/api/laporan-keuangan/generate-iuran-rw?bulan=${d.getMonth()+1}&tahun=${d.getFullYear()}&autoIuranRw=${autoIuranRw}&autoAmbulan=${autoAmbulan}`, {method:'POST'});
+  alert(`Otomatisasi laporan bulanan diperbarui.\nIuran RW: ${data.iuranRw ? rupiah(data.iuranRw.total || 0) : 'Nonaktif'}\nAmbulan: ${data.ambulan ? rupiah(data.ambulan.total || 0) : 'Nonaktif'}\nPeriode: ${data.iuranRw?.periodeText || data.ambulan?.periodeText || '-'}`);
   await loadLaporanKeuangan();
 }
 function downloadLaporanPdf(){

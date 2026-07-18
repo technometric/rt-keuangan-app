@@ -148,20 +148,22 @@ async function upsertPengeluaranAmbulan({ bulan, tahun, userId }){
   return { total, periodeText };
 }
 
-async function upsertLaporanBulananOtomatis({ bulan, tahun, userId }){
-  const iuranRw = await upsertPengeluaranIuranRw({ bulan, tahun, userId });
-  const ambulan = await upsertPengeluaranAmbulan({ bulan, tahun, userId });
+async function upsertLaporanBulananOtomatis({ bulan, tahun, userId, autoIuranRw = true, autoAmbulan = true }){
+  const iuranRw = autoIuranRw ? await upsertPengeluaranIuranRw({ bulan, tahun, userId }) : null;
+  const ambulan = autoAmbulan ? await upsertPengeluaranAmbulan({ bulan, tahun, userId }) : null;
   return { iuranRw, ambulan };
 }
 
-async function upsertLaporanRangeOtomatis({ start, end, userId }){
+async function upsertLaporanRangeOtomatis({ start, end, userId, autoIuranRw = true, autoAmbulan = true }){
   const results = [];
   for (let d = new Date(start.getFullYear(), start.getMonth(), 1); d < end; d = new Date(d.getFullYear(), d.getMonth() + 1, 1)) {
     const bulanLaporan = new Date(d.getFullYear(), d.getMonth() + 1, 1);
     results.push(await upsertLaporanBulananOtomatis({
       bulan: bulanLaporan.getMonth() + 1,
       tahun: bulanLaporan.getFullYear(),
-      userId
+      userId,
+      autoIuranRw,
+      autoAmbulan
     }));
   }
   return results;
@@ -173,9 +175,13 @@ async function buildReport(query = {}){
   const tahun = Number(query.tahun || now.getFullYear());
   const periode = Number(query.periode || 1) === 3 ? 3 : 1;
   const showBelumBayar = String(query.showBelumBayar || query.show_belum_bayar || 'false') === 'true';
+  const autoIuranRw = String(query.autoIuranRw || query.auto_iuran_rw || 'false') === 'true';
+  const autoAmbulan = String(query.autoAmbulan || query.auto_ambulan || 'false') === 'true';
   const { start, end } = periodeRange({ bulan, tahun, periode });
 
-  if (query.userId) await upsertLaporanRangeOtomatis({ start, end, userId: query.userId });
+  if (query.userId && (autoIuranRw || autoAmbulan)) {
+    await upsertLaporanRangeOtomatis({ start, end, userId: query.userId, autoIuranRw, autoAmbulan });
+  }
 
   const saldoAll = await saldoSemuaKas();
   const saldo = filterVisibleSaldo(saldoAll);
@@ -210,7 +216,7 @@ async function buildReport(query = {}){
   return {
     meta: {
       title: 'Laporan Keuangan RT02',
-      bulan, tahun, periode, showBelumBayar,
+      bulan, tahun, periode, showBelumBayar, autoIuranRw, autoAmbulan,
       periodeLabel: periodeLabel({ bulan, tahun, periode }),
       periodeStart: ymd(start),
       periodeEndExclusive: ymd(end),
@@ -230,7 +236,10 @@ router.post('/generate-iuran-rw', requireRole('admin'), async (req, res) => {
     const now = new Date();
     const bulan = Number(req.body.bulan || req.query.bulan || now.getMonth() + 1);
     const tahun = Number(req.body.tahun || req.query.tahun || now.getFullYear());
-    const result = await upsertLaporanBulananOtomatis({ bulan, tahun, userId: req.session.user.id });
+    const autoIuranRw = String(req.body.autoIuranRw || req.query.autoIuranRw || 'false') === 'true';
+    const autoAmbulan = String(req.body.autoAmbulan || req.query.autoAmbulan || 'false') === 'true';
+    if (!autoIuranRw && !autoAmbulan) return res.status(400).json({ message: 'Pilih minimal satu kredit otomatis: Iuran RW atau Ambulan.' });
+    const result = await upsertLaporanBulananOtomatis({ bulan, tahun, userId: req.session.user.id, autoIuranRw, autoAmbulan });
     res.json(result);
   } catch (err) {
     res.status(500).json({ message: err.message || 'Gagal membuat pengeluaran rutin Iuran RW' });

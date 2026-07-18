@@ -22,6 +22,8 @@
             <option value="3">Transaksi 3 bulan</option>
           </select>
           <label class="check-pill"><input id="showBelumBayar" type="checkbox" onchange="loadLaporanKeuangan()"> Tampilkan belum bayar IWK</label>
+          <label class="check-pill"><input id="autoIuranRw" type="checkbox" onchange="loadLaporanKeuangan()"> Kredit Iuran RW</label>
+          <label class="check-pill"><input id="autoAmbulan" type="checkbox" onchange="loadLaporanKeuangan()"> Kredit Ambulan</label>
           <button class="btn muted" onclick="generateIuranRwBulanan()">Buat Laporan Bulanan Otomatis</button>
           <button class="btn orange" onclick="downloadLaporanPdf()">Download PDF</button>
           <button class="btn" onclick="downloadLaporanPng()">Download PNG</button>
