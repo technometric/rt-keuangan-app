@@ -889,6 +889,19 @@ function showIwkStatusDetail(wargaId){
     const cls = statusClass(item.status);
     return `<tr><td>${item.label || '-'}</td><td><span class="badge outline ${cls}">${labelStatus(item.status)}</span></td><td>${rupiah(item.nominal || 0)}</td></tr>`;
   }).join('');
+  const canUploadBukti = normStatus(current.status) === 'belum_bayar';
+  const uploadForm = canUploadBukti ? `
+    <form id="formBuktiIwk" class="proof-upload-form" onsubmit="analisaBuktiIwk(event)">
+      <input type="hidden" name="bulan" value="${current.bulan || ''}">
+      <input type="hidden" name="tahun" value="${current.tahun || ''}">
+      <label class="field-label">Upload Bukti Transfer
+        <input class="input" type="file" name="foto_bukti" accept="image/*" required>
+      </label>
+      <button class="btn" type="submit">Analisa Bukti</button>
+      <p id="buktiIwkMsg" class="sub"></p>
+    </form>
+    <div id="buktiIwkResult"></div>
+  ` : '';
   modal.innerHTML = `
     <div class="iwk-modal-backdrop" onclick="closeIwkStatusDetail()"></div>
     <div class="iwk-modal-card">
@@ -902,8 +915,69 @@ function showIwkStatusDetail(wargaId){
           <tbody>${detailRows}</tbody>
         </table>
       </div>
+      ${uploadForm}
     </div>`;
   modal.classList.remove('hide');
+}
+let pendingBuktiIwkFormData = null;
+async function analisaBuktiIwk(event){
+  event.preventDefault();
+  const form = event.target;
+  const msg = document.getElementById('buktiIwkMsg');
+  const resultEl = document.getElementById('buktiIwkResult');
+  const formData = new FormData(form);
+  formData.set('mode', 'analisa');
+  if(msg) msg.textContent = 'Menganalisa bukti...';
+  if(resultEl) resultEl.innerHTML = '';
+  try{
+    const result = await fetch('/api/public/bukti-iwk', { method:'POST', body: formData }).then(async r => { const d = await r.json(); if(!r.ok) throw new Error(d.message); return d; });
+    const data = result.data || {};
+    pendingBuktiIwkFormData = new FormData(form);
+    if(msg) msg.textContent = result.message || 'Analisa bukti selesai.';
+    if(resultEl) resultEl.innerHTML = `
+      <div class="proof-result-card">
+        <h4>Hasil Analisa Bukti</h4>
+        <div><span>Status</span><strong>${esc(data.status_analisa || '-')}</strong></div>
+        <div><span>No Rek Tujuan</span><strong>${esc(data.no_rekening_tujuan || '-')}</strong></div>
+        <div><span>Nominal Transfer</span><strong>${rupiah(data.nominal_transfer || 0)}</strong></div>
+        <div><span>Tanggal Transfer</span><strong>${esc(data.tanggal_transfer || '-')}</strong></div>
+        <p>${esc(data.catatan || data.error_analisa || 'Bukti tersimpan untuk verifikasi.')}</p>
+        <label class="check-pill proof-confirm-check">
+          <input id="buktiIwkConfirm" type="checkbox" onchange="toggleKirimBuktiIwk()"> Data hasil analisa sudah sesuai/benar
+        </label>
+        <button id="btnKirimBuktiIwk" class="btn" type="button" onclick="kirimBuktiIwk()" disabled>Kirim Bukti Bayar</button>
+      </div>
+    `;
+  }catch(err){
+    if(msg) msg.textContent = err.message;
+  }
+}
+function toggleKirimBuktiIwk(){
+  const checked = document.getElementById('buktiIwkConfirm')?.checked === true;
+  const btn = document.getElementById('btnKirimBuktiIwk');
+  if(btn) btn.disabled = !checked;
+}
+async function kirimBuktiIwk(){
+  const msg = document.getElementById('buktiIwkMsg');
+  if(!pendingBuktiIwkFormData) {
+    if(msg) msg.textContent = 'Analisa bukti terlebih dahulu.';
+    return;
+  }
+  if(document.getElementById('buktiIwkConfirm')?.checked !== true) {
+    if(msg) msg.textContent = 'Centang konfirmasi data sudah sesuai/benar terlebih dahulu.';
+    return;
+  }
+  pendingBuktiIwkFormData.set('konfirmasi', 'true');
+  if(msg) msg.textContent = 'Mengirim bukti bayar...';
+  try{
+    const result = await fetch('/api/public/bukti-iwk', { method:'POST', body: pendingBuktiIwkFormData }).then(async r => { const d = await r.json(); if(!r.ok) throw new Error(d.message); return d; });
+    if(msg) msg.textContent = result.message || 'Bukti bayar berhasil dikirim.';
+    document.getElementById('btnKirimBuktiIwk')?.setAttribute('disabled', 'disabled');
+    pendingBuktiIwkFormData = null;
+    document.getElementById('formBuktiIwk')?.reset();
+  }catch(err){
+    if(msg) msg.textContent = err.message;
+  }
 }
 function closeIwkStatusDetail(){
   const modal = document.getElementById('iwkStatusModal');

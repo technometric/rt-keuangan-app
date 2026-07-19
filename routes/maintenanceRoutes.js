@@ -9,6 +9,7 @@ const WajibIwk = require('../models/WajibIwk');
 const ParameterIwk = require('../models/ParameterIwk');
 const IuranWajib = require('../models/IuranWajib');
 const TransaksiKas = require('../models/TransaksiKas');
+const BuktiTransferIwk = require('../models/BuktiTransferIwk');
 const AuditTrail = require('../models/AuditTrail');
 
 const router = express.Router();
@@ -19,6 +20,7 @@ const collections = [
   { key: 'wajib_iwk', model: WajibIwk },
   { key: 'parameter_iwk', model: ParameterIwk },
   { key: 'iuran_wajib', model: IuranWajib },
+  { key: 'bukti_transfer_iwk', model: BuktiTransferIwk },
   { key: 'transaksi_kas', model: TransaksiKas },
   { key: 'audit_trail', model: AuditTrail }
 ];

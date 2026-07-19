@@ -1,12 +1,25 @@
 const express = require('express');
+const multer = require('multer');
+const path = require('path');
 const IuranWajib = require('../models/IuranWajib');
 const TransaksiKas = require('../models/TransaksiKas');
 const WajibIwk = require('../models/WajibIwk');
 const ParameterIwk = require('../models/ParameterIwk');
 const TunggakanIwk = require('../models/TunggakanIwk');
+const BuktiTransferIwk = require('../models/BuktiTransferIwk');
 const { saldoSemuaKas } = require('../utils/kas');
+const { analisaBuktiTransfer } = require('../utils/buktiTransferOcr');
 const { requirePublicWarga } = require('../middleware/auth');
 const router = express.Router();
+
+const upload = multer({
+  storage: multer.diskStorage({
+    destination: (_, __, cb) => cb(null, path.join(__dirname, '../public/uploads')),
+    filename: (_, file, cb) => cb(null, `bukti-iwk-${Date.now()}-${file.originalname.replace(/\s+/g, '-')}`)
+  }),
+  limits: { fileSize: 5 * 1024 * 1024 },
+  fileFilter: (_, file, cb) => cb(null, /^image\//.test(file.mimetype))
+});
 
 router.use(requirePublicWarga);
 
@@ -47,6 +60,10 @@ function bulanTerakhirRange(periode = 1) {
   const start = new Date(end);
   start.setMonth(start.getMonth() - periode);
   return { start, end };
+}
+async function statusWargaPeriode(wargaId, bulan, tahun) {
+  const item = await IuranWajib.findOne({ warga: wargaId, bulan, tahun }).sort({ nominal_bayar: -1, tanggal: -1 }).lean();
+  return item ? normalizeStatus(item.status) : 'belum_bayar';
 }
 async function publicKasKeys() {
   const param = await ParameterIwk.findOne({ aktif: true }).sort({ createdAt: -1 }).lean();
@@ -114,6 +131,59 @@ router.get('/iuran-wajib', async (req, res) => {
   const data = await IuranWajib.find(filter).populate('warga').populate('petugas','nama area').sort({ tanggal: -1 }).lean();
   data.forEach(x => x.status = normalizeStatus(x.status));
   res.json(data);
+});
+
+router.post('/bukti-iwk', upload.single('foto_bukti'), async (req, res) => {
+  try {
+    const wargaId = req.session.publicWarga?.id;
+    const bulan = Number(req.body.bulan || 0);
+    const tahun = Number(req.body.tahun || 0);
+    const konfirmasi = req.body.konfirmasi === true || req.body.konfirmasi === 'true' || req.body.konfirmasi === 'on';
+    if (!wargaId) return res.status(401).json({ message: 'Sesi warga tidak ditemukan' });
+    if (!bulan || !tahun) return res.status(400).json({ message: 'Periode bukti transfer tidak valid' });
+    if (!req.file) return res.status(400).json({ message: 'Upload gambar bukti transfer terlebih dahulu' });
+    if (!konfirmasi && req.body.mode !== 'analisa') return res.status(400).json({ message: 'Analisa bukti terlebih dahulu, lalu centang konfirmasi benar sebelum kirim bukti bayar' });
+
+    const warga = await WajibIwk.findOne({ _id: wargaId, aktif: { $ne: false } }).lean();
+    if (!warga) return res.status(404).json({ message: 'Warga tidak ditemukan / nonaktif' });
+    const status = await statusWargaPeriode(wargaId, bulan, tahun);
+    if (status !== 'belum_bayar') return res.status(400).json({ message: 'Upload bukti hanya tersedia untuk status belum bayar' });
+
+    const param = await ParameterIwk.findOne({ aktif: true }).sort({ createdAt: -1 }).lean();
+    let hasil = { status_analisa: 'menunggu' };
+    try {
+      hasil = await analisaBuktiTransfer(req.file.path, req.file.mimetype, {
+        no_rekening_tujuan: param?.rekening_iwk?.no_rekening || '',
+        nama_warga: warga.nama,
+        no_rumah: warga.no_rumah
+      });
+    } catch (err) {
+      hasil = {
+        status_analisa: 'gagal',
+        error_analisa: err.message || 'Gagal OCR bukti transfer',
+        catatan: 'OCR lokal gagal. Periksa bukti secara manual sebelum konfirmasi.'
+      };
+    }
+
+    const payload = {
+      warga: wargaId,
+      bulan,
+      tahun,
+      foto_bukti: '/uploads/' + req.file.filename,
+      ...hasil,
+      dikonfirmasi_warga: konfirmasi,
+      dikonfirmasi_pada: konfirmasi ? new Date() : null
+    };
+
+    if (!konfirmasi) {
+      return res.json({ message: 'Analisa bukti selesai. Periksa hasilnya lalu centang konfirmasi benar untuk mengirim.', data: payload, tersimpan: false });
+    }
+
+    const bukti = await BuktiTransferIwk.create(payload);
+    res.json({ message: 'Bukti transfer berhasil dikirim dan menunggu verifikasi.', data: bukti, tersimpan: true });
+  } catch (err) {
+    res.status(500).json({ message: err.message || 'Gagal upload bukti transfer' });
+  }
 });
 
 router.get('/iuran-tahun', async (req, res) => {
