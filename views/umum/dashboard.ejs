@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
   <title>Informasi Keuangan RT02</title>
-  <link rel="stylesheet" href="/css/style.css?v=<%= assetVersion %>-v1310">
+  <link rel="stylesheet" href="/css/style.css?v=<%= assetVersion %>-v1311">
 </head>
 <body class="public-body clean-public">
   <div class="floating-menu-wrap">
@@ -65,6 +65,11 @@
         <span><i class="dot red hollow"></i>Blm bayar</span>
       </div>
 
+      <div class="status-filter sort-filter">
+        <button class="filter-pill active" data-sort="status" onclick="setIwkSortMode('status', this)">Blm Bayar Dulu</button>
+        <button class="filter-pill" data-sort="rumah" onclick="setIwkSortMode('rumah', this)">Urut No Rumah</button>
+      </div>
+
       <div id="iwkYearGrid" class="iwk-year-grid"></div>
       <div id="iwkStatusModal" class="iwk-status-modal hide"></div>
     </section>
@@ -92,7 +97,7 @@
     window.PUBLIC_WARGA_ID = <%- JSON.stringify(publicWarga?.id || '') %>;
     window.PUBLIC_WARGA_NO_RUMAH = <%- JSON.stringify(publicWarga?.no_rumah || '') %>;
   </script>
-  <script src="/js/app.js?v=<%= assetVersion %>-v1310"></script>
+  <script src="/js/app.js?v=<%= assetVersion %>-v1311"></script>
   <script>
     async function logoutPublic(){ await fetch('/api/auth/public-logout',{method:'POST'}); location.href='/umum/login'; }
     loadSaldo();loadIwkProgress();if(typeof loadRekeningIwk === 'function') loadRekeningIwk();initIwkYearView();loadTunggakanSebelumnya();loadAppVersion();

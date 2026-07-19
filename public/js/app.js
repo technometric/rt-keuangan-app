@@ -18,6 +18,7 @@ const bulanNama = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agu
 let iwkYear = new Date().getFullYear();
 let iwkFilter = 'belum_bayar';
 let iwkPeriodMode = String(new Date().getMonth() + 1);
+let iwkSortMode = 'status';
 let iwkYearData = [];
 let riwayatIwkRows = [];
 let activePaymentTab = 'iwk';
@@ -908,7 +909,13 @@ async function initIwkYearView(){
 function setIwkPeriodMode(value){ iwkPeriodMode = value; renderIwkYear(); }
 function setIwkFilter(status, btn){
   iwkFilter = status;
-  document.querySelectorAll('.filter-pill').forEach(x=>x.classList.remove('active'));
+  document.querySelectorAll('[data-status]').forEach(x=>x.classList.remove('active'));
+  if(btn) btn.classList.add('active');
+  renderIwkYear();
+}
+function setIwkSortMode(mode = 'status', btn){
+  iwkSortMode = mode === 'rumah' ? 'rumah' : 'status';
+  document.querySelectorAll('[data-sort]').forEach(x => x.classList.toggle('active', x.dataset.sort === iwkSortMode));
   if(btn) btn.classList.add('active');
   renderIwkYear();
 }
@@ -938,7 +945,8 @@ async function loadIwkYear(){
   if(note) note.textContent = res.tampil_tunggakan_lama ? 'Kartu merah bisa berarti belum bayar bulan berjalan atau masih ada tunggakan 12 bulan sebelumnya.' : 'Kartu mengikuti status pembayaran IWK bulan berjalan.';
   const filterWrap = document.getElementById('statusFilterWrap');
   if(filterWrap) filterWrap.classList.toggle('hide', iwkFilter === 'semua');
-  document.querySelectorAll('.filter-pill').forEach(btn => btn.classList.toggle('active', btn.dataset.status === iwkFilter));
+  document.querySelectorAll('[data-status]').forEach(btn => btn.classList.toggle('active', btn.dataset.status === iwkFilter));
+  document.querySelectorAll('[data-sort]').forEach(btn => btn.classList.toggle('active', btn.dataset.sort === iwkSortMode));
   renderIwkYear();
 }
 function rowMatchesFilter(row){
@@ -949,12 +957,30 @@ function rowMatchesFilter(row){
   if(iwkFilter === 'bayar') return (current === 'bayar' || current === 'pratinjau') && !hasLama;
   return current === iwkFilter;
 }
+function rowStatusRank(row){
+  const current = normStatus(row.current?.status);
+  if(row.has_tunggakan_lama || current === 'belum_bayar') return 0;
+  if(current === 'kurang') return 1;
+  if(current === 'pratinjau') return 2;
+  return 3;
+}
+function compareRumahRow(a, b){
+  return String(a.warga?.no_rumah || '').localeCompare(String(b.warga?.no_rumah || ''), 'id', { numeric:true, sensitivity:'base' }) ||
+    String(a.warga?.nama || '').localeCompare(String(b.warga?.nama || ''), 'id', { sensitivity:'base' });
+}
+function sortIwkRows(rows = []){
+  const sorted = [...rows];
+  if(iwkSortMode === 'rumah') return sorted.sort(compareRumahRow);
+  return sorted.sort((a,b) => rowStatusRank(a) - rowStatusRank(b) || compareRumahRow(a,b));
+}
 function renderIwkYear(){
   const el = document.getElementById('iwkYearGrid');
   if(!el) return;
-  const filtered = iwkYearData.filter(rowMatchesFilter);
-  if(!filtered.length){ el.innerHTML = '<div class="empty-state">Data tidak ditemukan untuk filter ini.</div>'; return; }
-  el.innerHTML = filtered.map(row => {
+  const ownRow = iwkYearData.find(row => isOwnPublicWarga(row.warga));
+  const filtered = sortIwkRows(iwkYearData.filter(row => row !== ownRow).filter(rowMatchesFilter));
+  const rows = ownRow ? [ownRow, ...filtered] : filtered;
+  if(!rows.length){ el.innerHTML = '<div class="empty-state">Data tidak ditemukan untuk filter ini.</div>'; return; }
+  el.innerHTML = rows.map(row => {
     const current = normStatus(row.current?.status);
     const cls = row.has_tunggakan_lama ? 'unpaid' : (current === 'bayar' || current === 'pratinjau') ? 'paid' : current === 'kurang' ? 'partial' : 'unpaid';
     const reason = row.has_tunggakan_lama ? 'Ada tunggakan lama' : current === 'pratinjau' ? 'Bayar · Transfer · Pratinjau' : labelStatus(current);
