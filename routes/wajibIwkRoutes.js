@@ -9,12 +9,18 @@ function naturalRumah(a, b) {
 }
 
 router.get('/', requireRole('admin','petugas','umum'), async (req, res) => {
-  const filter = {};
+  const filter = req.session.user?.role === 'admin' && String(req.query.semua || '') === 'true' ? {} : { aktif: { $ne: false } };
   const data = await WajibIwk.find(filter).lean();
   data.sort(naturalRumah);
   res.json(data);
 });
-router.post('/', requireRole('admin'), async (req, res) => { const warga = await WajibIwk.create(req.body); await tulisAudit(req, 'CREATE', 'Wajib IWK', `Tambah warga ${warga.nama}`); res.json(warga); });
-router.put('/:id', requireRole('admin'), async (req, res) => { const warga = await WajibIwk.findByIdAndUpdate(req.params.id, req.body, { new: true }); await tulisAudit(req, 'UPDATE', 'Wajib IWK', `Update warga ${warga?.nama || req.params.id}`); res.json(warga); });
+function normalizeWargaBody(body = {}) {
+  return {
+    ...body,
+    aktif: body.aktif === undefined ? true : body.aktif === true || body.aktif === 'true' || body.aktif === 'on' || body.aktif === '1'
+  };
+}
+router.post('/', requireRole('admin'), async (req, res) => { const warga = await WajibIwk.create(normalizeWargaBody(req.body)); await tulisAudit(req, 'CREATE', 'Wajib IWK', `Tambah warga ${warga.nama}`); res.json(warga); });
+router.put('/:id', requireRole('admin'), async (req, res) => { const warga = await WajibIwk.findByIdAndUpdate(req.params.id, normalizeWargaBody(req.body), { new: true }); await tulisAudit(req, 'UPDATE', 'Wajib IWK', `Update warga ${warga?.nama || req.params.id}`); res.json(warga); });
 router.delete('/:id', requireRole('admin'), async (req, res) => { const warga = await WajibIwk.findByIdAndDelete(req.params.id); await tulisAudit(req, 'DELETE', 'Wajib IWK', `Hapus warga ${warga?.nama || req.params.id}`); res.json({ message: 'Data warga dihapus' }); });
 module.exports = router;

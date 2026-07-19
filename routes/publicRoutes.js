@@ -22,6 +22,19 @@ function tambahBulan(bulan, tahun, offset) {
   const d = new Date(Number(tahun), Number(bulan) - 1 + offset, 1);
   return { bulan: d.getMonth() + 1, tahun: d.getFullYear() };
 }
+function periodValue(bulan, tahun) {
+  return Number(tahun) * 12 + Number(bulan);
+}
+function cutoffPeriod(param = {}) {
+  return {
+    bulan: Number(param.iwk_cutoff_bulan || 7),
+    tahun: Number(param.iwk_cutoff_tahun || 2026)
+  };
+}
+function clampPeriodToCutoff(bulan, tahun, param = {}) {
+  const cutoff = cutoffPeriod(param);
+  return periodValue(bulan, tahun) < periodValue(cutoff.bulan, cutoff.tahun) ? cutoff : { bulan: Number(bulan), tahun: Number(tahun) };
+}
 function periodeKey(bulan, tahun) {
   return `${tahun}-${String(bulan).padStart(2, '0')}`;
 }
@@ -111,14 +124,19 @@ router.get('/iuran-tahun', async (req, res) => {
 
 router.get('/iwk-status-cards', async (req, res) => {
   const now = new Date();
-  const bulan = Number(req.query.bulan || now.getMonth() + 1);
-  const tahun = Number(req.query.tahun || now.getFullYear());
   const param = await ParameterIwk.findOne({ aktif: true }).sort({ createdAt: -1 }).lean();
+  const requested = clampPeriodToCutoff(Number(req.query.bulan || now.getMonth() + 1), Number(req.query.tahun || now.getFullYear()), param);
+  const bulan = requested.bulan;
+  const tahun = requested.tahun;
+  const cutoff = cutoffPeriod(param);
   const tampilTunggakanLama = !!param?.tampil_tunggakan_iwk_lama;
   const statusFilter = ['bayar', 'kurang', 'belum_bayar', 'semua'].includes(param?.public_iwk_status_filter) ? param.public_iwk_status_filter : 'belum_bayar';
 
   const periods = [{ ...tambahBulan(bulan, tahun, 0), jenis: 'berjalan' }];
-  for (let i = 1; i <= 12; i++) periods.push({ ...tambahBulan(bulan, tahun, -i), jenis: 'lama' });
+  for (let i = 1; i <= 12; i++) {
+    const period = tambahBulan(bulan, tahun, -i);
+    if (periodValue(period.bulan, period.tahun) >= periodValue(cutoff.bulan, cutoff.tahun)) periods.push({ ...period, jenis: 'lama' });
+  }
   const years = [...new Set(periods.map(p => p.tahun))];
 
   const warga = await WajibIwk.find({ aktif: { $ne: false } }).lean();
@@ -177,9 +195,10 @@ router.get('/iwk-status-cards', async (req, res) => {
     bulan,
     tahun,
     periode: periodeLabel(bulan, tahun),
+    cutoff,
     tampil_tunggakan_lama: tampilTunggakanLama,
     public_iwk_status_filter: statusFilter,
-    previous_range: periods.length > 1 ? `${periods[1].label || periodeLabel(periods[1].bulan, periods[1].tahun)} - ${periods[12].label || periodeLabel(periods[12].bulan, periods[12].tahun)}` : '',
+    previous_range: periods.length > 1 ? `${periodeLabel(periods[1].bulan, periods[1].tahun)} - ${periodeLabel(periods[periods.length - 1].bulan, periods[periods.length - 1].tahun)}` : '',
     data
   });
 });

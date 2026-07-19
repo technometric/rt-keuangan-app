@@ -185,13 +185,14 @@ async function loadIwkProgress(targetId = 'iwkProgressCard') {
 }
 
 async function loadWarga(selectId = 'warga') {
-  let data = await api('/api/wajib-iwk');
+  const includeInactive = selectId === 'warga' && !!document.getElementById('wargaRows');
+  let data = await api(`/api/wajib-iwk${includeInactive ? '?semua=true' : ''}`);
   data = await filterWargaBelumBayarBulanBerjalan(data, selectId);
   const el = document.getElementById(selectId);
   if (el && el.tagName === 'SELECT') el.innerHTML = data.map(w => `<option value="${w._id}">${esc(w.no_rumah)} - ${esc(w.nama)} (${esc(w.area)})</option>`).join('');
   if (el && el.tagName !== 'SELECT') renderCustomWargaSelect(data, selectId);
   const rows = document.getElementById('wargaRows');
-  if (rows) rows.innerHTML = data.map((w,i) => `<tr><td>${i+1}</td><td>${esc(w.no_rumah)}</td><td>${esc(w.nama)}</td><td>${esc(w.area)}</td><td>${esc(w.hp || '-')}</td><td class="actions-cell"><button class="mini-btn" onclick='editWarga(${JSON.stringify(w)})'>Edit</button> <button class="mini-btn danger" onclick="deleteWarga('${w._id}')">Hapus</button></td></tr>`).join('');
+  if (rows) rows.innerHTML = data.map((w,i) => `<tr><td>${i+1}</td><td>${esc(w.no_rumah)}</td><td>${esc(w.nama)}</td><td>${esc(w.area)}</td><td>${esc(w.hp || '-')}</td><td>${w.aktif === false ? '<span class="danger-text">Nonaktif</span>' : '<span class="success-text">Aktif</span>'}</td><td class="actions-cell"><button class="mini-btn" onclick='editWarga(${JSON.stringify(w)})'>Edit</button> <button class="mini-btn danger" onclick="deleteWarga('${w._id}')">Hapus</button></td></tr>`).join('');
 }
 
 function renderCustomWargaSelect(data, inputId = 'warga'){
@@ -254,6 +255,7 @@ function editWarga(w){
   form.hp.value = w.hp || '';
   form.no_rumah.value = w.no_rumah || '';
   form.area.value = w.area || 'utara';
+  if(form.aktif) form.aktif.checked = w.aktif !== false;
   const title = document.getElementById('formWargaTitle');
   if(title) title.textContent = 'Edit Warga Wajib IWK';
   const btn = document.getElementById('btnWargaSubmit');
@@ -266,6 +268,7 @@ function resetWargaForm(){
   if(!form) return;
   form.reset();
   form.warga_id.value = '';
+  if(form.aktif) form.aktif.checked = true;
   const title = document.getElementById('formWargaTitle');
   if(title) title.textContent = 'Tambah Warga Wajib IWK';
   const btn = document.getElementById('btnWargaSubmit');
@@ -380,8 +383,31 @@ function updateNominalForCheckedMonths(){
   const nominal = document.getElementById('nominalBayar');
   if(nominal && lastTotalIwk > 0) {
     nominal.value = lastTotalIwk * checkedMonthCount();
+    if(Number(nominal.dataset.minPerBulan || 0) > 0) nominal.min = Number(nominal.dataset.minPerBulan || 0) * checkedMonthCount();
     nominal.placeholder = `Nominal total bayar (${rupiah(lastTotalIwk)} x ${checkedMonthCount()} bulan)`;
   }
+}
+
+function applyIwkCutoffToChecklist(cutoffBulan = 7, cutoffTahun = 2026){
+  const checklist = document.getElementById('bulanChecklist');
+  const tahun = document.getElementById('tahunMulai');
+  if(!checklist || !tahun) return;
+  const refresh = () => {
+    const y = Number(tahun.value || new Date().getFullYear());
+    checklist.querySelectorAll('input[name="bulan_list"]').forEach(input => {
+      const disabled = y < cutoffTahun || (y === cutoffTahun && Number(input.value) < cutoffBulan);
+      input.disabled = disabled;
+      if(disabled) {
+        input.checked = false;
+        input.closest('.month-check')?.classList.remove('active');
+      }
+      input.closest('.month-check')?.classList.toggle('disabled', disabled);
+    });
+    updateNominalForCheckedMonths();
+  };
+  tahun.min = cutoffTahun;
+  tahun.addEventListener('input', refresh);
+  refresh();
 }
 
 async function setDefaultNominalIwk(){
@@ -390,6 +416,12 @@ async function setDefaultNominalIwk(){
   try{
     const p = await api('/api/parameter-iwk');
     lastTotalIwk = Number(p.total_iwk || 0);
+    const minimal = Number(p.minimal_nominal_iwk || 0);
+    if(minimal > 0) {
+      nominal.min = minimal * checkedMonthCount();
+      nominal.dataset.minPerBulan = minimal;
+    }
+    applyIwkCutoffToChecklist(Number(p.iwk_cutoff_bulan || 7), Number(p.iwk_cutoff_tahun || 2026));
     updateNominalForCheckedMonths();
   }catch(e){}
 }
@@ -407,7 +439,34 @@ function bindIwkForm() {
   });
 }
 
-async function initPetugasIwk() { setupBulanMulai(); setupRiwayatFilters(); await setDefaultNominalIwk(); await loadWarga(); bindIwkForm(); await initRiwayatInputVisibility(); await initFotoInputVisibility(); await loadIwk(); await loadPetugasBulanIniTotal(); }
+function setPaymentTab(tab = 'iwk'){
+  document.querySelectorAll('.payment-tabs .tab-btn').forEach(btn => btn.classList.toggle('active', btn.dataset.tab === tab));
+  document.getElementById('iwkPaymentPanel')?.classList.toggle('hide', tab !== 'iwk');
+  document.getElementById('donasiPaymentPanel')?.classList.toggle('hide', tab !== 'donasi');
+}
+
+function bindDonasiForm(){
+  const form = document.getElementById('formDonasi');
+  if(!form || form.dataset.bound) return;
+  form.dataset.bound = 'true';
+  const tanggal = form.elements.tanggal;
+  if(tanggal && !tanggal.value) tanggal.value = new Date().toISOString().slice(0,16);
+  form.addEventListener('submit', async e => {
+    e.preventDefault();
+    const msg = document.getElementById('donasiMsg');
+    try{
+      const body = Object.fromEntries(new FormData(form).entries());
+      const result = await api('/api/iuran-wajib/donasi', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) });
+      form.reset();
+      if(tanggal) tanggal.value = new Date().toISOString().slice(0,16);
+      if(msg) msg.textContent = result.message || 'Donasi berhasil disimpan.';
+    }catch(err){
+      if(msg) msg.textContent = err.message;
+    }
+  });
+}
+
+async function initPetugasIwk() { setupBulanMulai(); setupRiwayatFilters(); await setDefaultNominalIwk(); await loadWarga(); bindIwkForm(); bindDonasiForm(); await initRiwayatInputVisibility(); await initFotoInputVisibility(); await loadIwk(); await loadPetugasBulanIniTotal(); }
 
 async function initRiwayatInputVisibility(){
   const panel = document.getElementById('riwayatIwkInputPanel');
@@ -457,6 +516,22 @@ function setupMonthYearControls(monthId, yearId){
     bulan.value = now.getMonth() + 1;
   }
   if(tahun) tahun.value = now.getFullYear();
+}
+
+function applyIwkCutoffToMonthControl(monthId, yearId, cutoffBulan = 7, cutoffTahun = 2026){
+  const bulan = document.getElementById(monthId);
+  const tahun = document.getElementById(yearId);
+  if(!bulan || !tahun) return;
+  const refresh = () => {
+    const y = Number(tahun.value || new Date().getFullYear());
+    [...bulan.options].forEach(opt => { opt.disabled = y < cutoffTahun || (y === cutoffTahun && Number(opt.value) < cutoffBulan); });
+    if(y < cutoffTahun) tahun.value = cutoffTahun;
+    if(Number(tahun.value) === cutoffTahun && Number(bulan.value) < cutoffBulan) bulan.value = cutoffBulan;
+  };
+  tahun.min = cutoffTahun;
+  tahun.addEventListener('input', refresh);
+  bulan.addEventListener('change', refresh);
+  refresh();
 }
 
 async function initAdminIwkMonthlyReport(){
@@ -567,7 +642,9 @@ function syncParamTotal(){
   const totalEl = document.getElementById('paramTotalText');
   if(totalEl) totalEl.textContent = rupiah(total);
   const minEl = document.getElementById('paramMinimumText');
-  if(minEl) minEl.textContent = rupiah(Number(formParam.elements.uang_satpam?.value || 0) + Number(formParam.elements.uang_sampah?.value || 0));
+  const fallbackMin = Number(formParam.elements.uang_satpam?.value || 0) + Number(formParam.elements.uang_sampah?.value || 0);
+  const customMin = Number(formParam.elements.minimal_nominal_iwk?.value || 0);
+  if(minEl) minEl.textContent = rupiah(customMin > 0 ? customMin : fallbackMin);
 }
 
 async function initMaster() {
@@ -582,7 +659,7 @@ async function initMaster() {
   }
   if(formParam.elements.kas_pkk && !formParam.elements.kas_pkk.value && p.kas_rw) formParam.elements.kas_pkk.value = p.kas_rw;
   syncParamTotal();
-  ['uang_satpam','uang_sampah','kas_pkk','kas_rt','kas_sosial','santunan_kematian'].forEach(k=>formParam.elements[k]?.addEventListener('input', syncParamTotal));
+  ['uang_satpam','uang_sampah','kas_pkk','kas_rt','kas_sosial','santunan_kematian','minimal_nominal_iwk'].forEach(k=>formParam.elements[k]?.addEventListener('input', syncParamTotal));
   formParam.addEventListener('submit', async e => {
     e.preventDefault();
     const body = Object.fromEntries(new FormData(e.target).entries());
@@ -604,6 +681,7 @@ async function initMaster() {
     const body = Object.fromEntries(new FormData(e.target).entries());
     const id = body.warga_id;
     delete body.warga_id;
+    body.aktif = e.target.aktif?.checked === true;
     const method = id ? 'PUT' : 'POST';
     const url = id ? `/api/wajib-iwk/${id}` : '/api/wajib-iwk';
     await api(url, { method, headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) });
@@ -701,6 +779,7 @@ async function loadIwkYear(){
   const res = await api(`/api/public/iwk-status-cards?bulan=${bulan}&tahun=${tahun}`);
   iwkYearData = res.data || [];
   iwkFilter = res.public_iwk_status_filter || 'belum_bayar';
+  if(res.cutoff) applyIwkCutoffToMonthControl('iwkStatusBulan', 'iwkStatusTahun', Number(res.cutoff.bulan || 7), Number(res.cutoff.tahun || 2026));
   if(text) text.textContent = res.periode || `${bulanNama[d.getMonth()]} ${d.getFullYear()}`;
   const note = document.getElementById('iwkStatusNote');
   if(note) note.textContent = res.tampil_tunggakan_lama ? 'Kartu merah bisa berarti belum bayar bulan berjalan atau masih ada tunggakan 12 bulan sebelumnya.' : 'Kartu mengikuti status pembayaran IWK bulan berjalan.';

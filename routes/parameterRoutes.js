@@ -22,6 +22,9 @@ function normalizePayload(body = {}, old = {}) {
   for (const k of keys) payload[k] = Number(body[k] ?? (k === 'kas_pkk' ? body.kas_rw : undefined) ?? old[k] ?? (k === 'kas_pkk' ? old.kas_rw : undefined) ?? 0);
   payload.kas_rw = 0;
   payload.total_iwk = hitungTotal(payload);
+  payload.minimal_nominal_iwk = Number(body.minimal_nominal_iwk ?? old.minimal_nominal_iwk ?? (Number(payload.uang_satpam || 0) + Number(payload.uang_sampah || 0)));
+  payload.iwk_cutoff_bulan = Math.min(12, Math.max(1, Number(body.iwk_cutoff_bulan ?? old.iwk_cutoff_bulan ?? 7)));
+  payload.iwk_cutoff_tahun = Number(body.iwk_cutoff_tahun ?? old.iwk_cutoff_tahun ?? 2026);
   payload.jumlah_kk_iuran_rw = Number(body.jumlah_kk_iuran_rw ?? old.jumlah_kk_iuran_rw ?? 75);
   payload.iuran_ambulan_bulanan = Number(body.iuran_ambulan_bulanan ?? old.iuran_ambulan_bulanan ?? 50000);
   payload.tampil_tunggakan_umum = body.tampil_tunggakan_umum === true || body.tampil_tunggakan_umum === 'true' || body.tampil_tunggakan_umum === 'on';
@@ -49,6 +52,9 @@ async function getParam() {
   if (Number(param.total_iwk || 0) !== hitungTotal(param)) {
     param.total_iwk = hitungTotal(param);
   }
+  if (!Number(param.minimal_nominal_iwk || 0)) param.minimal_nominal_iwk = Number(param.uang_satpam || 0) + Number(param.uang_sampah || 0);
+  if (!param.iwk_cutoff_bulan) param.iwk_cutoff_bulan = 7;
+  if (!param.iwk_cutoff_tahun) param.iwk_cutoff_tahun = 2026;
   if (!param.jumlah_kk_iuran_rw) param.jumlah_kk_iuran_rw = 75;
   if (!param.iuran_ambulan_bulanan) param.iuran_ambulan_bulanan = 50000;
   if (!param.public_kas_visible) param.public_kas_visible = {};

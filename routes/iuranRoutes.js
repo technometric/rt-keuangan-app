@@ -8,8 +8,8 @@ const WajibIwk = require('../models/WajibIwk');
 const ParameterIwk = require('../models/ParameterIwk');
 const TunggakanIwk = require('../models/TunggakanIwk');
 const { requireRole } = require('../middleware/auth');
-const { bagiIwk, minimumBayarIwk, statusIwk } = require('../utils/iwk');
-const { hitungUlangSaldoKas } = require('../utils/kas');
+const { bagiIwk, minimumBayarIwk, batasStatusBayarIwk, statusIwk } = require('../utils/iwk');
+const { buatTransaksiKas, hitungUlangSaldoKas } = require('../utils/kas');
 const TransaksiKas = require('../models/TransaksiKas');
 const { tulisAudit } = require('../utils/audit');
 const router = express.Router();
@@ -30,6 +30,9 @@ function tambahBulan(bulan, tahun, offset) {
   const d = new Date(Number(tahun), Number(bulan) - 1 + offset, 1);
   return { bulan: d.getMonth() + 1, tahun: d.getFullYear() };
 }
+function periodValue(bulan, tahun) {
+  return Number(tahun) * 12 + Number(bulan);
+}
 const bulanFull = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
 function rp(n){ return 'Rp ' + Number(n || 0).toLocaleString('id-ID'); }
 function normalizeBulanList(body = {}) {
@@ -43,10 +46,15 @@ function normalizeBulanList(body = {}) {
   const tahunAwal = Number(body.tahun || new Date().getFullYear());
   return Array.from({ length: jumlahBulan }, (_, i) => tambahBulan(bulanAwal, tahunAwal, i));
 }
-function legacyPeriods(date = new Date()) {
+async function legacyPeriods(date = new Date()) {
+  const param = await getParam();
+  const cutoffBulan = Number(param.iwk_cutoff_bulan || 7);
+  const cutoffTahun = Number(param.iwk_cutoff_tahun || 2026);
+  const cutoffValue = periodValue(cutoffBulan, cutoffTahun);
   const nowMonth = date.getMonth() + 1;
   const nowYear = date.getFullYear();
-  return Array.from({ length: 12 }, (_, i) => tambahBulan(nowMonth, nowYear, -(i + 1)));
+  return Array.from({ length: 12 }, (_, i) => tambahBulan(nowMonth, nowYear, -(i + 1)))
+    .filter(p => periodValue(p.bulan, p.tahun) >= cutoffValue);
 }
 
 router.get('/', requireRole('admin','petugas','umum'), async (req, res) => {
@@ -149,8 +157,9 @@ router.get('/laporan-bulanan/pdf', requireRole('admin'), async (req, res) => {
 });
 
 router.get('/tunggakan-lama', requireRole('admin'), async (req, res) => {
-  const periods = legacyPeriods();
+  const periods = await legacyPeriods();
   const wargaId = req.query.warga;
+  if (!periods.length) return res.json({ periods: [], data: [] });
   const filter = { $or: periods.map(p => ({ bulan: p.bulan, tahun: p.tahun })) };
   if (wargaId) filter.warga = wargaId;
   const rows = await TunggakanIwk.find(filter).lean();
@@ -162,7 +171,7 @@ router.post('/tunggakan-lama', requireRole('admin'), async (req, res) => {
   if (!warga) return res.status(404).json({ message: 'Warga tidak ditemukan' });
   const selectedRaw = req.body.periode || req.body['periode[]'] || [];
   const selected = new Set((Array.isArray(selectedRaw) ? selectedRaw : [selectedRaw]).filter(Boolean));
-  const periods = legacyPeriods();
+  const periods = await legacyPeriods();
   for (const p of periods) {
     const key = `${p.tahun}-${String(p.bulan).padStart(2, '0')}`;
     const aktif = selected.has(key);
@@ -180,18 +189,20 @@ router.post('/', requireRole('admin','petugas'), upload.single('foto_bayar'), as
   const param = await getParam();
   const warga = await WajibIwk.findById(req.body.warga);
   if (!warga) return res.status(404).json({ message: 'Warga tidak ditemukan' });
+  if (warga.aktif === false) return res.status(400).json({ message: 'Warga nonaktif tidak bisa diinput pembayaran IWK' });
 
   const nominalTotal = Number(req.body.nominal_bayar || 0);
   const totalIwk = Number(param.total_iwk || 0);
   const minimalIwk = minimumBayarIwk(param);
+  const batasStatusBayar = batasStatusBayarIwk(param);
   const metode = req.body.metode_bayar || 'cash';
   const periods = normalizeBulanList(req.body);
   const jumlahBulan = periods.length;
   const tanggalInput = req.body.tanggal ? new Date(req.body.tanggal) : new Date();
 
   if (metode === 'cash' && param.wajib_foto_cash && param.tampil_foto_iwk_input !== false && !req.file) return res.status(400).json({ message: 'Foto cash wajib diupload' });
-  if (nominalTotal < (minimalIwk * jumlahBulan)) return res.status(400).json({ message: `Minimal bayar IWK adalah ${minimalIwk.toLocaleString('id-ID')} per bulan (satpam/keamanan + sampah).` });
-  if (nominalTotal < (totalIwk * jumlahBulan) && !req.body.catatan_petugas) return res.status(400).json({ message: 'Catatan wajib diisi jika belum bayar / bayar kurang' });
+  if (nominalTotal < (minimalIwk * jumlahBulan)) return res.status(400).json({ message: `Minimal bayar IWK adalah ${minimalIwk.toLocaleString('id-ID')} per bulan sesuai setting minimal nominal IWK.` });
+  if (nominalTotal < (batasStatusBayar * jumlahBulan) && !req.body.catatan_petugas) return res.status(400).json({ message: 'Catatan wajib diisi jika belum bayar / bayar kurang' });
 
   let sisaBayar = nominalTotal;
   const grup = crypto.randomBytes(8).toString('hex');
@@ -214,7 +225,7 @@ router.post('/', requireRole('admin','petugas'), upload.single('foto_bayar'), as
       jam: new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }),
       bulan: periode.bulan,
       tahun: periode.tahun,
-      status: statusIwk(nominalPeriode, totalIwk),
+      status: statusIwk(nominalPeriode, batasStatusBayar),
       catatan_petugas: req.body.catatan_petugas || '',
       grup_pembayaran: grup,
       bulan_ke: i + 1,
@@ -226,6 +237,28 @@ router.post('/', requireRole('admin','petugas'), upload.single('foto_bayar'), as
 
   await tulisAudit(req, 'CREATE', 'Iuran IWK', `Input IWK ${warga.nama} nominal ${nominalTotal} untuk ${jumlahBulan} bulan`);
   res.json({ message: 'Pembayaran berhasil disimpan', jumlah_data: hasilIuran.length, data: hasilIuran });
+});
+
+router.post('/donasi', requireRole('admin','petugas'), async (req, res) => {
+  const nama = String(req.body.nama || '').trim();
+  const noRumah = String(req.body.no_rumah || '').trim();
+  const nominal = Number(req.body.nominal || 0);
+  if (!nama) return res.status(400).json({ message: 'Nama penyumbang wajib diisi' });
+  if (!noRumah) return res.status(400).json({ message: 'Nomor rumah wajib diisi' });
+  if (nominal <= 0) return res.status(400).json({ message: 'Nominal donasi wajib lebih dari 0' });
+  const tanggal = req.body.tanggal ? new Date(req.body.tanggal) : new Date();
+  const trx = await buatTransaksiKas({
+    jenis_kas: 'kas_donasi',
+    sumber: 'donasi',
+    ref_id: null,
+    keterangan: `${nama} - No ${noRumah}`,
+    tanggal,
+    debet: nominal,
+    kredit: 0,
+    dibuat_oleh: req.session.user.id
+  });
+  await tulisAudit(req, 'CREATE', 'Donasi', `Input donasi ${nama} ${nominal}`);
+  res.json({ message: 'Donasi berhasil disimpan', data: trx });
 });
 
 
@@ -242,11 +275,12 @@ router.put('/:id', requireRole('admin','petugas'), async (req, res) => {
   const catatanBaru = req.body.catatan_petugas ?? iuran.catatan_petugas;
   const totalIwk = Number(param.total_iwk || 0);
   const minimalIwk = minimumBayarIwk(param);
+  const batasStatusBayar = batasStatusBayarIwk(param);
 
   if (nominalBaru < minimalIwk) {
-    return res.status(400).json({ message: `Minimal bayar IWK adalah ${minimalIwk.toLocaleString('id-ID')} per bulan (satpam/keamanan + sampah).` });
+    return res.status(400).json({ message: `Minimal bayar IWK adalah ${minimalIwk.toLocaleString('id-ID')} per bulan sesuai setting minimal nominal IWK.` });
   }
-  if (nominalBaru < totalIwk && !catatanBaru) {
+  if (nominalBaru < batasStatusBayar && !catatanBaru) {
     return res.status(400).json({ message: 'Catatan wajib diisi jika bayar kurang / belum bayar' });
   }
 
@@ -257,7 +291,7 @@ router.put('/:id', requireRole('admin','petugas'), async (req, res) => {
 
   iuran.nominal_bayar = nominalBaru;
   iuran.catatan_petugas = catatanBaru;
-  iuran.status = statusIwk(nominalBaru, totalIwk);
+  iuran.status = statusIwk(nominalBaru, batasStatusBayar);
   iuran.rincian = rincianBaru;
   await iuran.save();
 

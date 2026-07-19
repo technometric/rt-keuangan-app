@@ -13,7 +13,12 @@
       <div class="title">Input Pembayaran IWK</div>
       <div class="sub">Petugas bisa input pembayaran untuk semua wilayah dan beberapa bulan sekaligus.</div>
 
-      <div class="panel">
+      <div class="tabbar payment-tabs">
+        <button class="tab-btn active" type="button" data-tab="iwk" onclick="setPaymentTab('iwk')">IWK</button>
+        <button class="tab-btn" type="button" data-tab="donasi" onclick="setPaymentTab('donasi')">Donasi</button>
+      </div>
+
+      <div id="iwkPaymentPanel" class="panel payment-panel">
         <form id="formIwk">
           <div class="row">
             <label class="field-label">Warga
@@ -37,6 +42,21 @@
           <button class="btn">Simpan Pembayaran</button>
         </form>
         <p id="msg" class="sub"></p>
+      </div>
+
+      <div id="donasiPaymentPanel" class="panel payment-panel hide">
+        <form id="formDonasi">
+          <div class="row">
+            <label class="field-label">Tanggal<input class="input" name="tanggal" type="datetime-local"></label>
+            <label class="field-label">Nama Warga<input class="input" name="nama" placeholder="Nama penyumbang" required></label>
+            <label class="field-label">Nomor Rumah<input class="input" name="no_rumah" placeholder="No rumah" required></label>
+          </div>
+          <div class="row">
+            <label class="field-label">Nominal Donasi<input class="input" name="nominal" type="number" min="1" placeholder="Nominal donasi" required></label>
+          </div>
+          <button class="btn">Simpan Donasi</button>
+        </form>
+        <p id="donasiMsg" class="sub"></p>
       </div>
 
       <div id="petugasIwkTotalBulanIni" class="iwk-progress-card"></div>

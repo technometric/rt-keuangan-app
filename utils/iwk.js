@@ -21,14 +21,20 @@ function bagiIwk(nominalBayar, parameter) {
 }
 
 function minimumBayarIwk(parameter) {
+  const customMinimum = Number(parameter?.minimal_nominal_iwk || 0);
+  if (customMinimum > 0) return customMinimum;
   return Number(parameter?.uang_satpam || 0) + Number(parameter?.uang_sampah || 0);
 }
 
-function statusIwk(nominalBayar, totalIwk) {
+function batasStatusBayarIwk(parameter) {
+  return Number(parameter?.uang_satpam || 0) + Number(parameter?.uang_sampah || 0);
+}
+
+function statusIwk(nominalBayar, batasBayar) {
   const bayar = Number(nominalBayar || 0);
-  if (bayar >= Number(totalIwk || 0)) return 'bayar';
+  if (bayar >= Number(batasBayar || 0)) return 'bayar';
   if (bayar > 0) return 'kurang';
   return 'belum_bayar';
 }
 
-module.exports = { bagiIwk, minimumBayarIwk, statusIwk };
+module.exports = { bagiIwk, minimumBayarIwk, batasStatusBayarIwk, statusIwk };
