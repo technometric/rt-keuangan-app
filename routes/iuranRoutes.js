@@ -262,6 +262,20 @@ router.post('/donasi', requireRole('admin','petugas'), async (req, res) => {
   res.json({ message: 'Donasi berhasil disimpan', data: trx });
 });
 
+router.get('/donasi/riwayat', requireRole('admin','petugas'), async (req, res) => {
+  const now = new Date();
+  const bulan = Number(req.query.bulan || now.getMonth() + 1);
+  const tahun = Number(req.query.tahun || now.getFullYear());
+  const start = new Date(tahun, bulan - 1, 1);
+  const end = new Date(tahun, bulan, 1);
+  const rows = await TransaksiKas.find({
+    jenis_kas: 'kas_donasi',
+    sumber: 'donasi',
+    tanggal: { $gte: start, $lt: end }
+  }).populate('dibuat_oleh', 'nama').sort({ tanggal: -1, createdAt: -1 }).lean();
+  res.json({ bulan, tahun, rows });
+});
+
 
 router.put('/:id/konfirmasi-transfer', requireRole('admin','petugas'), async (req, res) => {
   const iuran = await IuranWajib.findById(req.params.id).populate('warga');

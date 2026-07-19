@@ -20,6 +20,7 @@ let iwkFilter = 'belum_bayar';
 let iwkPeriodMode = String(new Date().getMonth() + 1);
 let iwkYearData = [];
 let riwayatIwkRows = [];
+let activePaymentTab = 'iwk';
 let lastTotalIwk = 0;
 
 function esc(s){
@@ -352,6 +353,7 @@ async function deleteWarga(id){
 }
 
 async function loadIwk() {
+  if(activePaymentTab === 'donasi') return loadDonasiRiwayat();
   const bulan = document.getElementById('riwayatBulan')?.value || '';
   const tahun = document.getElementById('riwayatTahun')?.value || '';
   const qs = new URLSearchParams();
@@ -360,6 +362,7 @@ async function loadIwk() {
   let data = await api(`/api/iuran-wajib${qs.toString() ? '?' + qs.toString() : ''}`);
   const el = document.getElementById('riwayat');
   if (!el) return;
+  setRiwayatPanelMode('iwk');
   const q = (document.getElementById('riwayatSearch')?.value || '').trim().toLowerCase();
   const nq = normalizeSearchText(q);
   if(q) {
@@ -378,6 +381,38 @@ async function loadIwk() {
     const actionButtons = withDelete ? `<td>${x.status === 'pratinjau' ? `<button class="mini-btn" type="button" onclick="showKonfirmasiIwkPratinjau('${x._id}')">Jadikan Bayar</button> ` : ''}<button class="mini-btn danger" type="button" onclick="deleteIwkRiwayat('${x._id}')">Hapus</button></td>` : '';
     return `<tr><td>${new Date(x.tanggal).toLocaleDateString('id-ID')}</td><td>${esc(x.warga?.nama || '-')}<br><small>${esc(x.warga?.no_rumah || '-')}</small></td><td>${rupiah(x.nominal_bayar)}<br><small>${bulanNama[(x.bulan || 1)-1]} ${x.tahun || ''} · ${metode}</small></td><td><span class="badge outline ${statusClass(x.status)}">${labelStatus(x.status)}</span></td><td>${esc(info)}</td>${actionButtons}</tr>`;
   }).join('') : `<tr><td colspan="${withDelete ? 6 : 5}" class="empty-cell">Riwayat tidak ditemukan.</td></tr>`;
+}
+
+function setRiwayatPanelMode(mode = 'iwk'){
+  const title = document.getElementById('riwayatPanelTitle');
+  const desc = document.getElementById('riwayatPanelDesc');
+  const toolbar = document.querySelector('#riwayatIwkInputPanel .toolbar-actions');
+  const thead = document.querySelector('#riwayatIwkInputPanel table thead');
+  if(mode === 'donasi'){
+    if(title) title.textContent = 'Riwayat Donasi';
+    if(desc) desc.textContent = 'Donasi sukarela bulan berjalan.';
+    if(toolbar) toolbar.classList.add('hide');
+    if(thead) thead.innerHTML = '<tr><th>Tanggal</th><th>Penyumbang</th><th>Nominal</th><th>Petugas</th><th>Catatan</th><th>Aksi</th></tr>';
+    return;
+  }
+  if(title) title.textContent = 'Riwayat IWK';
+  if(desc) desc.textContent = title.closest('body')?.querySelector('#formTunggakanIwk') ? 'Filter bulan/tahun atau cari baris yang akan dihapus.' : 'Bisa dicetak PDF sebagai bukti penagihan ke bendahara.';
+  if(toolbar) toolbar.classList.remove('hide');
+  const infoLabel = document.getElementById('riwayat')?.dataset.info === 'petugas' ? 'Petugas' : 'Catatan';
+  if(thead) thead.innerHTML = `<tr><th>Tanggal</th><th>Warga</th><th>Nominal</th><th>Status</th><th>${infoLabel}</th><th>Aksi</th></tr>`;
+}
+
+async function loadDonasiRiwayat(){
+  const el = document.getElementById('riwayat');
+  if(!el) return;
+  setRiwayatPanelMode('donasi');
+  const now = new Date();
+  const res = await api(`/api/iuran-wajib/donasi/riwayat?bulan=${now.getMonth()+1}&tahun=${now.getFullYear()}`);
+  const rows = res.rows || [];
+  el.innerHTML = rows.length ? rows.map(x => {
+    const [nama, rumah] = String(x.keterangan || '-').split(' - No ');
+    return `<tr><td>${new Date(x.tanggal).toLocaleDateString('id-ID')}</td><td>${esc(nama || '-')}<br><small>${esc(rumah || '-')}</small></td><td>${rupiah(x.debet || 0)}</td><td>${esc(x.dibuat_oleh?.nama || '-')}</td><td>${esc(x.keterangan || '-')}</td><td>-</td></tr>`;
+  }).join('') : '<tr><td colspan="6" class="empty-cell">Belum ada donasi bulan berjalan.</td></tr>';
 }
 
 function setupRiwayatFilters(){
@@ -550,9 +585,12 @@ function bindIwkForm() {
 }
 
 function setPaymentTab(tab = 'iwk'){
+  activePaymentTab = tab;
   document.querySelectorAll('.payment-tabs .tab-btn').forEach(btn => btn.classList.toggle('active', btn.dataset.tab === tab));
   document.getElementById('iwkPaymentPanel')?.classList.toggle('hide', tab !== 'iwk');
   document.getElementById('donasiPaymentPanel')?.classList.toggle('hide', tab !== 'donasi');
+  if(tab === 'donasi') loadDonasiRiwayat();
+  else loadIwk();
 }
 
 function bindDonasiForm(){
@@ -570,6 +608,7 @@ function bindDonasiForm(){
       form.reset();
       if(tanggal) tanggal.value = new Date().toISOString().slice(0,16);
       if(msg) msg.textContent = result.message || 'Donasi berhasil disimpan.';
+      await loadDonasiRiwayat();
     }catch(err){
       if(msg) msg.textContent = err.message;
     }
@@ -987,6 +1026,12 @@ async function analisaBuktiIwk(event){
   try{
     const result = await fetch('/api/public/bukti-iwk', { method:'POST', body: formData }).then(async r => { const d = await r.json(); if(!r.ok) throw new Error(d.message); return d; });
     const data = result.data || {};
+    if(data.validasi_bank_pengirim !== true) {
+      pendingBuktiIwkFormData = null;
+      pendingBuktiIwkChecksOk = false;
+      if(msg) msg.textContent = 'Bukti transfer tidak memenuhi syarat. Bank pengirim harus BRI/BCA.';
+      return;
+    }
     pendingBuktiIwkFormData = new FormData(form);
     const bankCheckOk = data.validasi_bank_pengirim !== false;
     pendingBuktiIwkChecksOk = data.cek_text_berhasil === true && data.cek_rekening_sesuai === true && data.cek_periode_sesuai === true && data.cek_no_rumah_sesuai === true && bankCheckOk;

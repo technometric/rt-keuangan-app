@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>Input IWK</title>
-  <link rel="stylesheet" href="/css/style.css?v=<%= assetVersion %>">
+  <link rel="stylesheet" href="/css/style.css?v=<%= assetVersion %>-v1310">
 </head>
 <body>
   <div class="app">
@@ -64,8 +64,8 @@
       <div id="riwayatIwkInputPanel" class="panel">
         <div class="table-toolbar">
           <div>
-            <h2>Riwayat IWK</h2>
-            <p class="sub">Bisa dicetak PDF sebagai bukti penagihan ke bendahara.</p>
+            <h2 id="riwayatPanelTitle">Riwayat IWK</h2>
+            <p id="riwayatPanelDesc" class="sub">Bisa dicetak PDF sebagai bukti penagihan ke bendahara.</p>
           </div>
           <div class="toolbar-actions">
             <label class="field-label compact-field">Bulan
@@ -89,7 +89,7 @@
       </div>
     </main>
   </div>
-  <script src="/js/app.js?v=<%= assetVersion %>"></script>
+  <script src="/js/app.js?v=<%= assetVersion %>-v1310"></script>
   <script>initPetugasIwk()</script>
 </body>
 </html>

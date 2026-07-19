@@ -247,13 +247,13 @@ router.post('/bukti-iwk', upload.single('foto_bukti'), async (req, res) => {
     };
 
     if (!konfirmasi) {
-      const message = checks.validasi_bank_pengirim === false
-        ? 'Bank pengirim bukan BRI/BCA, proses tidak bisa dilanjutkan.'
+      const message = checks.validasi_bank_pengirim !== true
+        ? 'Bukti transfer tidak memenuhi syarat. Bank pengirim harus BRI/BCA.'
         : 'Analisa bukti selesai. Periksa hasilnya lalu centang konfirmasi benar untuk mengirim.';
       return res.json({ message, data: payload, tersimpan: false });
     }
-    if (checks.validasi_bank_pengirim === false) {
-      return res.status(400).json({ message: 'Bank pengirim bukan BRI/BCA, proses tidak bisa dilanjutkan.', data: payload });
+    if (checks.validasi_bank_pengirim !== true) {
+      return res.status(400).json({ message: 'Bukti transfer tidak memenuhi syarat. Bank pengirim harus BRI/BCA.', data: payload });
     }
     if (checks.validasi_catatan_transfer !== false && !checks.cek_no_rumah_sesuai) {
       return res.status(400).json({ message: 'Catatan transfer belum memuat nomor rumah login.', data: payload });
