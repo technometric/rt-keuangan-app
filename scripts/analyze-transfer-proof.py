@@ -63,6 +63,44 @@ def pick_amount(text):
     return max(candidates) if candidates else 0
 
 
+# Daftar bank yang didukung untuk deteksi "bank pengirim". Tambahkan entri
+# baru di sini kalau nanti ada sample bukti transfer dari bank lain.
+BANK_ALIASES = [
+    ("BRI", [r"BANK\s+BRI\b", r"BANK\s+RAKYAT\s+INDONESIA", r"\bBRIMO\b"]),
+    ("BCA", [r"BANK\s+CENTRAL\s+ASIA", r"\bM-TRANSFER\b", r"\bBCA\s+MOBILE\b", r"\bKLIKBCA\b"]),
+]
+
+
+def pick_sender_bank(text):
+    lines = [l.strip() for l in text.splitlines() if l.strip()]
+
+    # Prioritas 1: label eksplisit "Sumber Dana" (mis. struk BRImo) ->
+    # ambil nama bank di beberapa baris setelahnya. Ini paling akurat
+    # karena langsung merujuk rekening pengirim, bukan penerima.
+    for i, line in enumerate(lines):
+        if re.search(r"sumber\s+dana", line, flags=re.I):
+            block = lines[i + 1: i + 5]
+            for bline in block:
+                for canonical, patterns in BANK_ALIASES:
+                    for p in patterns:
+                        if re.search(p, bline, flags=re.I):
+                            return canonical
+            break
+
+    # Prioritas 2: fallback untuk bank yang tidak punya label "Sumber Dana"
+    # eksplisit (mis. struk BCA m-Transfer) -> cari nama bank/istilah app
+    # di footer atau header, tapi skip kalau kemunculannya ada persis di
+    # dekat kata "Tujuan" (berarti itu nama bank PENERIMA, bukan pengirim).
+    for canonical, patterns in BANK_ALIASES:
+        for pattern in patterns:
+            for match in re.finditer(pattern, text, flags=re.I):
+                context_before = text[max(0, match.start() - 60): match.start()]
+                if re.search(r"tujuan", context_before, flags=re.I):
+                    continue
+                return canonical
+    return ""
+
+
 def pick_status(text):
     match = re.search(
         r"(Transaksi\s+Berhasil|Transaksi\s+Gagal|Transaksi\s+Diproses|Transaksi\s+Pending)",
@@ -165,12 +203,21 @@ def main():
     expected_account = sys.argv[2] if len(sys.argv) > 2 else ""
     nama_warga = sys.argv[3] if len(sys.argv) > 3 else ""
     no_rumah = sys.argv[4] if len(sys.argv) > 4 else ""
+    expected_bank = sys.argv[5] if len(sys.argv) > 5 else ""
 
     text = read_text(image_path)
     account = pick_account(text, expected_account)
     amount = pick_amount(text)
     date = pick_date(text)
     status_transaksi = pick_status(text)
+    bank_pengirim = pick_sender_bank(text)
+
+    validasi_bank_pengirim = None
+    if expected_bank:
+        if bank_pengirim:
+            validasi_bank_pengirim = bank_pengirim.strip().upper() == expected_bank.strip().upper()
+        else:
+            validasi_bank_pengirim = False
     confidence = 0.3
     if account:
         confidence += 0.25
@@ -190,12 +237,18 @@ def main():
         notes.append("Nominal transfer belum terbaca.")
     if not date:
         notes.append("Tanggal transfer belum terbaca.")
+    if not bank_pengirim:
+        notes.append("Bank pengirim belum terbaca.")
+    elif expected_bank and validasi_bank_pengirim is False:
+        notes.append(f"Bank pengirim terbaca '{bank_pengirim}', tidak sesuai bank yang diharapkan '{expected_bank}'.")
     if nama_warga or no_rumah:
         notes.append(f"Bukti dari {nama_warga or '-'} / {no_rumah or '-'}.")
 
     emit({
         "status_analisa": "berhasil",
         "status_transaksi": status_transaksi,
+        "bank_pengirim": bank_pengirim,
+        "validasi_bank_pengirim": validasi_bank_pengirim,
         "no_rekening_tujuan": account,
         "nominal_transfer": amount,
         "tanggal_transfer": date,
