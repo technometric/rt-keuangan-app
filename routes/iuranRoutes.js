@@ -7,6 +7,7 @@ const IuranWajib = require('../models/IuranWajib');
 const WajibIwk = require('../models/WajibIwk');
 const ParameterIwk = require('../models/ParameterIwk');
 const TunggakanIwk = require('../models/TunggakanIwk');
+const BuktiTransferIwk = require('../models/BuktiTransferIwk');
 const { requireRole } = require('../middleware/auth');
 const { bagiIwk, minimumBayarIwk, batasStatusBayarIwk, statusIwk } = require('../utils/iwk');
 const { buatTransaksiKas, hitungUlangSaldoKas } = require('../utils/kas');
@@ -62,7 +63,7 @@ router.get('/', requireRole('admin','petugas','umum'), async (req, res) => {
   const filter = {};
   if (bulan) filter.bulan = Number(bulan);
   if (tahun) filter.tahun = Number(tahun);
-  let data = await IuranWajib.find(filter).populate('warga').populate('petugas','nama area').sort({ tanggal: -1 });
+  let data = await IuranWajib.find(filter).populate('warga').populate('petugas','nama area').populate('bukti_transfer_iwk').sort({ tanggal: -1 });
   res.json(data);
 });
 
@@ -262,6 +263,27 @@ router.post('/donasi', requireRole('admin','petugas'), async (req, res) => {
 });
 
 
+router.put('/:id/konfirmasi-transfer', requireRole('admin','petugas'), async (req, res) => {
+  const iuran = await IuranWajib.findById(req.params.id).populate('warga');
+  if (!iuran) return res.status(404).json({ message: 'Riwayat IWK tidak ditemukan' });
+  if (iuran.status !== 'pratinjau') return res.status(400).json({ message: 'Riwayat ini bukan status pratinjau' });
+  if (iuran.metode_bayar !== 'transfer') return res.status(400).json({ message: 'Konfirmasi ini hanya untuk pembayaran transfer' });
+
+  const param = await getParam();
+  const batasStatusBayar = batasStatusBayarIwk(param);
+  const nominal = Number(iuran.nominal_bayar || 0);
+  if (nominal < batasStatusBayar) return res.status(400).json({ message: 'Nominal transfer belum memenuhi batas status bayar' });
+
+  iuran.status = 'bayar';
+  iuran.catatan_petugas = String(iuran.catatan_petugas || '').replace(/^Pratinjau bukti transfer warga\.\s*/i, '').trim();
+  if (!iuran.catatan_petugas) iuran.catatan_petugas = 'Transfer dikonfirmasi petugas.';
+  iuran.rincian = bagiIwk(nominal, param);
+  await iuran.save();
+
+  await tulisAudit(req, 'UPDATE', 'Iuran IWK', `Konfirmasi pratinjau transfer ${iuran.warga?.nama || req.params.id}`);
+  res.json({ message: 'Status pratinjau berhasil diubah menjadi bayar.', data: iuran });
+});
+
 
 router.put('/:id', requireRole('admin','petugas'), async (req, res) => {
   const iuran = await IuranWajib.findById(req.params.id).populate('warga');
@@ -305,12 +327,19 @@ router.delete('/:id', requireRole('admin','petugas'), async (req, res) => {
   if (confirmText !== 'hapus') return res.status(400).json({ message: 'Ketik hapus untuk konfirmasi' });
   const iuran = await IuranWajib.findById(req.params.id);
   if (!iuran) return res.status(404).json({ message: 'Riwayat IWK tidak ditemukan' });
-  if (req.session.user.role === 'petugas' && String(iuran.petugas) !== String(req.session.user.id)) {
+  const buktiTransferWarga = iuran.metode_bayar === 'transfer' && (
+    !!iuran.bukti_transfer_iwk ||
+    String(iuran.grup_pembayaran || '').startsWith('bukti-') ||
+    /\/uploads\/bukti-iwk-/i.test(String(iuran.foto_bayar || ''))
+  );
+  if (req.session.user.role === 'petugas' && String(iuran.petugas) !== String(req.session.user.id) && !buktiTransferWarga) {
     return res.status(403).json({ message: 'Petugas hanya bisa hapus riwayat yang dibuat sendiri' });
   }
   const trx = await TransaksiKas.find({ sumber: 'iwk', ref_id: req.params.id }).lean();
   const jenisTerdampak = [...new Set(trx.map(x => x.jenis_kas))];
   await TransaksiKas.deleteMany({ sumber: 'iwk', ref_id: req.params.id });
+  if (iuran.bukti_transfer_iwk) await BuktiTransferIwk.deleteOne({ _id: iuran.bukti_transfer_iwk });
+  else await BuktiTransferIwk.updateMany({ iuran_wajib: iuran._id }, { $set: { iuran_wajib: null } });
   await iuran.deleteOne();
   for (const jenis of jenisTerdampak) await hitungUlangSaldoKas(jenis);
   await tulisAudit(req, 'DELETE', 'Iuran IWK', `Hapus iuran ${req.params.id}`);

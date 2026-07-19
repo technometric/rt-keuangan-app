@@ -101,6 +101,23 @@ def pick_sender_bank(text):
     return ""
 
 
+def pick_transfer_note(text):
+    lines = [l.strip() for l in text.splitlines() if l.strip()]
+    # Label umum yang dipakai berbagai bank untuk "berita transfer":
+    # BRI/Mandiri: "Berita"/"Catatan", BCA: "BERITA", DANA/OVO: "Pesan"/"Catatan".
+    label_pattern = re.compile(
+        r"^(?:BERITA|CATATAN|KETERANGAN|PESAN|NOTES?)\s*[:.]?\s*(.+)$",
+        flags=re.I,
+    )
+    for line in lines:
+        match = label_pattern.match(line)
+        if match:
+            note = match.group(1).strip()
+            if note:
+                return note
+    return ""
+
+
 def pick_status(text):
     match = re.search(
         r"(Transaksi\s+Berhasil|Transaksi\s+Gagal|Transaksi\s+Diproses|Transaksi\s+Pending)",
@@ -211,6 +228,7 @@ def main():
     date = pick_date(text)
     status_transaksi = pick_status(text)
     bank_pengirim = pick_sender_bank(text)
+    catatan_transfer = pick_transfer_note(text)
 
     validasi_bank_pengirim = None
     if expected_bank:
@@ -252,6 +270,7 @@ def main():
         "no_rekening_tujuan": account,
         "nominal_transfer": amount,
         "tanggal_transfer": date,
+        "catatan_transfer": catatan_transfer,
         "catatan": " ".join(notes) or "OCR lokal berhasil membaca bukti transfer.",
         "raw_text": text.strip(),
         "confidence": min(round(confidence, 2), 1),

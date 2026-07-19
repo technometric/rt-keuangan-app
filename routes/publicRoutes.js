@@ -7,15 +7,25 @@ const WajibIwk = require('../models/WajibIwk');
 const ParameterIwk = require('../models/ParameterIwk');
 const TunggakanIwk = require('../models/TunggakanIwk');
 const BuktiTransferIwk = require('../models/BuktiTransferIwk');
+const User = require('../models/User');
 const { saldoSemuaKas } = require('../utils/kas');
 const { analisaBuktiTransfer } = require('../utils/buktiTransferOcr');
+const { bagiIwk } = require('../utils/iwk');
 const { requirePublicWarga } = require('../middleware/auth');
 const router = express.Router();
+
+function safeUploadName(value = 'warga') {
+  return String(value || 'warga').trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'warga';
+}
 
 const upload = multer({
   storage: multer.diskStorage({
     destination: (_, __, cb) => cb(null, path.join(__dirname, '../public/uploads')),
-    filename: (_, file, cb) => cb(null, `bukti-iwk-${Date.now()}-${file.originalname.replace(/\s+/g, '-')}`)
+    filename: (req, file, cb) => {
+      const ext = path.extname(file.originalname || '').toLowerCase() || '.jpg';
+      const noRumah = req.session?.publicWarga?.no_rumah || req.body?.no_rumah || 'warga';
+      cb(null, `bukti-iwk-${safeUploadName(noRumah)}${ext}`);
+    }
   }),
   limits: { fileSize: 5 * 1024 * 1024 },
   fileFilter: (_, file, cb) => cb(null, /^image\//.test(file.mimetype))
@@ -58,6 +68,9 @@ function periodeLabel(bulan, tahun) {
 function onlyDigits(value = '') {
   return String(value || '').replace(/\D/g, '');
 }
+function normalizeReceiptText(value = '') {
+  return String(value || '').toLowerCase().replace(/\bno\b/g, '').replace(/[^a-z0-9]/g, '');
+}
 function detectTransferSuccess(hasil = {}) {
   return /berhasil|sukses/i.test(`${hasil.status_transaksi || ''} ${hasil.raw_text || ''}`);
 }
@@ -90,17 +103,22 @@ function normalizeYear(value) {
   const year = Number(value || 0);
   return year < 100 ? 2000 + year : year;
 }
-function buildBuktiChecks(hasil = {}, param = {}, bulan, tahun) {
+function buildBuktiChecks(hasil = {}, param = {}, bulan, tahun, warga = {}) {
   const rekeningSetting = String(param?.rekening_iwk?.no_rekening || '').trim();
   const rekeningSettingDigits = onlyDigits(rekeningSetting);
   const rekeningOcrDigits = onlyDigits(hasil.no_rekening_tujuan);
   const transferPeriod = parseTransferPeriod(hasil.tanggal_transfer);
+  const validasiCatatanTransfer = param?.validasi_catatan_transfer !== false;
+  const noRumah = normalizeReceiptText(warga.no_rumah || '');
+  const receiptText = normalizeReceiptText(hasil.catatan_transfer || '');
   return {
     rekening_tujuan_setting: rekeningSetting,
     validasi_bank_pengirim: typeof hasil.validasi_bank_pengirim === 'boolean' ? hasil.validasi_bank_pengirim : null,
+    validasi_catatan_transfer: validasiCatatanTransfer,
     cek_text_berhasil: detectTransferSuccess(hasil),
     cek_rekening_sesuai: !!rekeningSettingDigits && !!rekeningOcrDigits && rekeningSettingDigits === rekeningOcrDigits,
-    cek_periode_sesuai: !!transferPeriod && transferPeriod.bulan === Number(bulan) && transferPeriod.tahun === Number(tahun)
+    cek_periode_sesuai: !!transferPeriod && transferPeriod.bulan === Number(bulan) && transferPeriod.tahun === Number(tahun),
+    cek_no_rumah_sesuai: !validasiCatatanTransfer || (!!noRumah && receiptText.includes(noRumah))
   };
 }
 function bulanTerakhirRange(periode = 1) {
@@ -112,6 +130,9 @@ function bulanTerakhirRange(periode = 1) {
 async function statusWargaPeriode(wargaId, bulan, tahun) {
   const item = await IuranWajib.findOne({ warga: wargaId, bulan, tahun }).sort({ nominal_bayar: -1, tanggal: -1 }).lean();
   return item ? normalizeStatus(item.status) : 'belum_bayar';
+}
+async function userRiwayatPratinjau() {
+  return User.findOne({ aktif: { $ne: false }, role: { $in: ['admin', 'petugas'] } }).sort({ role: 1, createdAt: 1 }).lean();
 }
 async function publicKasKeys() {
   const param = await ParameterIwk.findOne({ aktif: true }).sort({ createdAt: -1 }).lean();
@@ -213,7 +234,7 @@ router.post('/bukti-iwk', upload.single('foto_bukti'), async (req, res) => {
       };
     }
 
-    const checks = buildBuktiChecks(hasil, param, bulan, tahun);
+    const checks = buildBuktiChecks(hasil, param, bulan, tahun, warga);
     const payload = {
       warga: wargaId,
       bulan,
@@ -226,14 +247,46 @@ router.post('/bukti-iwk', upload.single('foto_bukti'), async (req, res) => {
     };
 
     if (!konfirmasi) {
-      return res.json({ message: 'Analisa bukti selesai. Periksa hasilnya lalu centang konfirmasi benar untuk mengirim.', data: payload, tersimpan: false });
+      const message = checks.validasi_bank_pengirim === false
+        ? 'Bank pengirim bukan BRI/BCA, proses tidak bisa dilanjutkan.'
+        : 'Analisa bukti selesai. Periksa hasilnya lalu centang konfirmasi benar untuk mengirim.';
+      return res.json({ message, data: payload, tersimpan: false });
     }
-    if (!checks.cek_text_berhasil || !checks.cek_rekening_sesuai || !checks.cek_periode_sesuai || checks.validasi_bank_pengirim === false) {
+    if (checks.validasi_bank_pengirim === false) {
+      return res.status(400).json({ message: 'Bank pengirim bukan BRI/BCA, proses tidak bisa dilanjutkan.', data: payload });
+    }
+    if (checks.validasi_catatan_transfer !== false && !checks.cek_no_rumah_sesuai) {
+      return res.status(400).json({ message: 'Catatan transfer belum memuat nomor rumah login.', data: payload });
+    }
+    if (!checks.cek_text_berhasil || !checks.cek_rekening_sesuai || !checks.cek_periode_sesuai || !checks.cek_no_rumah_sesuai) {
       return res.status(400).json({ message: 'Bukti belum bisa dikirim karena hasil cek otomatis belum lengkap/sesuai.', data: payload });
     }
+    const petugasPratinjau = await userRiwayatPratinjau();
+    if (!petugasPratinjau) return res.status(500).json({ message: 'User admin/petugas untuk riwayat pratinjau belum tersedia.', data: payload });
 
     const bukti = await BuktiTransferIwk.create(payload);
-    res.json({ message: 'Bukti transfer berhasil dikirim dan menunggu verifikasi.', data: bukti, tersimpan: true });
+    const nominalTransfer = Number(hasil.nominal_transfer || 0);
+    const iuran = await IuranWajib.create({
+      warga: wargaId,
+      petugas: petugasPratinjau._id,
+      nominal_bayar: nominalTransfer,
+      metode_bayar: 'transfer',
+      foto_bayar: '/uploads/' + req.file.filename,
+      bukti_transfer_iwk: bukti._id,
+      tanggal: new Date(),
+      jam: new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }),
+      bulan,
+      tahun,
+      status: 'pratinjau',
+      catatan_petugas: `Pratinjau bukti transfer warga. ${hasil.catatan || ''}`.trim(),
+      grup_pembayaran: `bukti-${bukti._id}`,
+      bulan_ke: 1,
+      total_bulan: 1,
+      rincian: bagiIwk(nominalTransfer, param || {})
+    });
+    bukti.iuran_wajib = iuran._id;
+    await bukti.save();
+    res.json({ message: 'Bukti transfer berhasil dikirim. Status IWK masuk pratinjau dan menunggu konfirmasi petugas.', data: { bukti, iuran }, tersimpan: true });
   } catch (err) {
     res.status(500).json({ message: err.message || 'Gagal upload bukti transfer' });
   }
@@ -315,6 +368,7 @@ router.get('/iwk-status-cards', async (req, res) => {
         jenis: p.jenis,
         status,
         nominal,
+        metode_bayar: item?.metode_bayar || '',
         catatan: legacyUnpaid ? 'Ditandai tunggakan lama' : item?.catatan_petugas || ''
       };
     });

@@ -39,6 +39,7 @@ function normalizePayload(body = {}, old = {}) {
     : body.tampil_tunggakan_iwk_lama === true || body.tampil_tunggakan_iwk_lama === 'true' || body.tampil_tunggakan_iwk_lama === 'on';
   payload.tampil_riwayat_iwk_input = boolFromBody(body.tampil_riwayat_iwk_input, old.tampil_riwayat_iwk_input !== false);
   payload.tampil_foto_iwk_input = boolFromBody(body.tampil_foto_iwk_input, old.tampil_foto_iwk_input !== false);
+  payload.validasi_catatan_transfer = boolFromBody(body.validasi_catatan_transfer, old.validasi_catatan_transfer !== false);
   payload.public_iwk_status_filter = publicIwkStatusFilters.includes(body.public_iwk_status_filter) ? body.public_iwk_status_filter : (old.public_iwk_status_filter || 'belum_bayar');
   payload.public_kas_visible = {};
   for (const key of publicKasKeys) {
@@ -74,6 +75,7 @@ async function getParam() {
   }
   if (param.tampil_riwayat_iwk_input === undefined) param.tampil_riwayat_iwk_input = true;
   if (param.tampil_foto_iwk_input === undefined) param.tampil_foto_iwk_input = true;
+  if (param.validasi_catatan_transfer === undefined) param.validasi_catatan_transfer = true;
   if (!publicIwkStatusFilters.includes(param.public_iwk_status_filter)) param.public_iwk_status_filter = 'belum_bayar';
   if (changedPublicKas) param.markModified('public_kas_visible');
   await param.save();
@@ -102,6 +104,14 @@ router.put('/foto-iwk-input', requireRole('admin'), async (req, res) => {
   await param.save();
   await tulisAudit(req, 'UPDATE', 'Parameter IWK', `Input foto IWK ${param.tampil_foto_iwk_input ? 'ditampilkan' : 'disembunyikan'}`);
   res.json({ message: 'Setting input foto IWK tersimpan', tampil_foto_iwk_input: param.tampil_foto_iwk_input });
+});
+
+router.put('/validasi-catatan-transfer', requireRole('admin'), async (req, res) => {
+  const param = await getParam();
+  param.validasi_catatan_transfer = boolFromBody(req.body.validasi_catatan_transfer);
+  await param.save();
+  await tulisAudit(req, 'UPDATE', 'Parameter IWK', `Validasi catatan transfer ${param.validasi_catatan_transfer ? 'diaktifkan' : 'dinonaktifkan'}`);
+  res.json({ message: 'Setting validasi catatan transfer tersimpan', validasi_catatan_transfer: param.validasi_catatan_transfer });
 });
 
 router.put('/status-iwk-umum', requireRole('admin'), async (req, res) => {

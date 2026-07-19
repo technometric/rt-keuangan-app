@@ -34,6 +34,7 @@ async function analisaBuktiTransfer(filePath, mimeType, context = {}) {
     no_rekening_tujuan: String(result.no_rekening_tujuan || '').trim(),
     nominal_transfer: Number(result.nominal_transfer || 0),
     tanggal_transfer: String(result.tanggal_transfer || '').trim(),
+    catatan_transfer: String(result.catatan_transfer || '').trim(),
     catatan: String(result.catatan || '').trim(),
     raw_text: String(result.raw_text || '').trim(),
     confidence: Number(result.confidence || 0)

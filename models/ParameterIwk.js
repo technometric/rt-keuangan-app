@@ -24,6 +24,7 @@ const ParameterIwkSchema = new mongoose.Schema({
   tampil_tunggakan_iwk_lama: { type: Boolean, default: false },
   tampil_riwayat_iwk_input: { type: Boolean, default: true },
   tampil_foto_iwk_input: { type: Boolean, default: true },
+  validasi_catatan_transfer: { type: Boolean, default: true },
   public_iwk_status_filter: { type: String, enum: ['bayar', 'kurang', 'belum_bayar', 'semua'], default: 'belum_bayar' },
   public_kas_visible: {
     kas_rt: { type: Boolean, default: true },
