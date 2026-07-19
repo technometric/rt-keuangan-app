@@ -11,7 +11,32 @@ def emit(data):
 def normalize_amount(raw):
     if not raw:
         return 0
-    digits = re.sub(r"[^0-9]", "", raw)
+    raw = raw.strip()
+    has_comma = "," in raw
+    has_dot = "." in raw
+    digits_and_seps = re.sub(r"[^0-9.,]", "", raw)
+
+    if has_comma and has_dot:
+        # Ada dua jenis pemisah -> yang PALING KANAN dianggap pemisah desimal
+        # (mis: "30,000.00" -> koma=ribuan, titik=desimal).
+        last_sep_pos = max(digits_and_seps.rfind(","), digits_and_seps.rfind("."))
+        integer_part = re.sub(r"[.,]", "", digits_and_seps[:last_sep_pos])
+        decimal_part = digits_and_seps[last_sep_pos + 1:]
+        # Sen/desimal (biasanya 2 digit di belakang) dibuang, kita cuma mau rupiah utuh.
+        digits = integer_part if len(decimal_part) <= 2 else integer_part + decimal_part
+    elif has_comma or has_dot:
+        sep = "," if has_comma else "."
+        parts = digits_and_seps.split(sep)
+        if len(parts) == 2 and len(parts[-1]) == 2:
+            # Satu pemisah, 2 digit di belakang -> kemungkinan besar desimal/sen.
+            digits = parts[0]
+        else:
+            # Pemisah ribuan (mis: "30.000" atau "1.234.567") -> gabung semua.
+            digits = "".join(parts)
+    else:
+        digits = digits_and_seps
+
+    digits = re.sub(r"\D", "", digits)
     return int(digits) if digits else 0
 
 
@@ -44,7 +69,17 @@ def pick_status(text):
         text,
         flags=re.I,
     )
-    return match.group(1).title() if match else ""
+    if match:
+        return match.group(1).title()
+
+    # Fallback: beberapa bank (mis. BCA m-Transfer) cuma nulis status
+    # sendirian di satu baris tanpa kata "Transaksi", contoh: "BERHASIL".
+    match2 = re.search(
+        r"^\s*(BERHASIL|SUKSES|GAGAL|PENDING|DIPROSES)\s*$",
+        text,
+        flags=re.I | re.M,
+    )
+    return match2.group(1).title() if match2 else ""
 
 
 def pick_date(text):

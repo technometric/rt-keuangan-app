@@ -28,6 +28,9 @@ async function analisaBuktiTransfer(filePath, mimeType, context = {}) {
   const result = await runPythonOcr(filePath, context);
   return {
     status_analisa: result.status_analisa || 'berhasil',
+    status_transaksi: String(result.status_transaksi || '').trim(),
+    bank_pengirim: String(result.bank_pengirim || '').trim(),
+    validasi_bank_pengirim: typeof result.validasi_bank_pengirim === 'boolean' ? result.validasi_bank_pengirim : null,
     no_rekening_tujuan: String(result.no_rekening_tujuan || '').trim(),
     nominal_transfer: Number(result.nominal_transfer || 0),
     tanggal_transfer: String(result.tanggal_transfer || '').trim(),

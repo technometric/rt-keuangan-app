@@ -55,6 +55,54 @@ function periodeLabel(bulan, tahun) {
   const nama = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
   return `${nama[Number(bulan) - 1]} ${tahun}`;
 }
+function onlyDigits(value = '') {
+  return String(value || '').replace(/\D/g, '');
+}
+function detectTransferSuccess(hasil = {}) {
+  return /berhasil|sukses/i.test(`${hasil.status_transaksi || ''} ${hasil.raw_text || ''}`);
+}
+function parseTransferPeriod(value = '') {
+  const text = String(value || '').trim().toLowerCase();
+  if (!text) return null;
+  const monthNames = {
+    jan: 1, januari: 1,
+    feb: 2, februari: 2,
+    mar: 3, maret: 3,
+    apr: 4, april: 4,
+    mei: 5,
+    jun: 6, juni: 6,
+    jul: 7, juli: 7,
+    agu: 8, agus: 8, agust: 8, agustus: 8,
+    sep: 9, september: 9,
+    okt: 10, oktober: 10,
+    nov: 11, november: 11,
+    des: 12, desember: 12
+  };
+  let match = text.match(/\b([0-3]?\d)[/-]([01]?\d)[/-]((?:20)?\d{2})\b/);
+  if (match) return { bulan: Number(match[2]), tahun: normalizeYear(match[3]) };
+  match = text.match(/\b((?:20)\d{2})[/-]([01]?\d)[/-]([0-3]?\d)\b/);
+  if (match) return { bulan: Number(match[2]), tahun: Number(match[1]) };
+  match = text.match(/\b[0-3]?\d\s+([a-z]+)\s+((?:20)?\d{2})\b/);
+  if (match && monthNames[match[1]]) return { bulan: monthNames[match[1]], tahun: normalizeYear(match[2]) };
+  return null;
+}
+function normalizeYear(value) {
+  const year = Number(value || 0);
+  return year < 100 ? 2000 + year : year;
+}
+function buildBuktiChecks(hasil = {}, param = {}, bulan, tahun) {
+  const rekeningSetting = String(param?.rekening_iwk?.no_rekening || '').trim();
+  const rekeningSettingDigits = onlyDigits(rekeningSetting);
+  const rekeningOcrDigits = onlyDigits(hasil.no_rekening_tujuan);
+  const transferPeriod = parseTransferPeriod(hasil.tanggal_transfer);
+  return {
+    rekening_tujuan_setting: rekeningSetting,
+    validasi_bank_pengirim: typeof hasil.validasi_bank_pengirim === 'boolean' ? hasil.validasi_bank_pengirim : null,
+    cek_text_berhasil: detectTransferSuccess(hasil),
+    cek_rekening_sesuai: !!rekeningSettingDigits && !!rekeningOcrDigits && rekeningSettingDigits === rekeningOcrDigits,
+    cek_periode_sesuai: !!transferPeriod && transferPeriod.bulan === Number(bulan) && transferPeriod.tahun === Number(tahun)
+  };
+}
 function bulanTerakhirRange(periode = 1) {
   const end = new Date();
   const start = new Date(end);
@@ -165,18 +213,23 @@ router.post('/bukti-iwk', upload.single('foto_bukti'), async (req, res) => {
       };
     }
 
+    const checks = buildBuktiChecks(hasil, param, bulan, tahun);
     const payload = {
       warga: wargaId,
       bulan,
       tahun,
       foto_bukti: '/uploads/' + req.file.filename,
       ...hasil,
+      ...checks,
       dikonfirmasi_warga: konfirmasi,
       dikonfirmasi_pada: konfirmasi ? new Date() : null
     };
 
     if (!konfirmasi) {
       return res.json({ message: 'Analisa bukti selesai. Periksa hasilnya lalu centang konfirmasi benar untuk mengirim.', data: payload, tersimpan: false });
+    }
+    if (!checks.cek_text_berhasil || !checks.cek_rekening_sesuai || !checks.cek_periode_sesuai || checks.validasi_bank_pengirim === false) {
+      return res.status(400).json({ message: 'Bukti belum bisa dikirim karena hasil cek otomatis belum lengkap/sesuai.', data: payload });
     }
 
     const bukti = await BuktiTransferIwk.create(payload);

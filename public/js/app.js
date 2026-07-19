@@ -46,6 +46,11 @@ function labelStatus(s){
 }
 function normStatus(s){ return s === 'lunas' ? 'bayar' : (s || 'belum_bayar'); }
 function statusClass(s){ s = normStatus(s); return s === 'bayar' ? 'green' : s === 'kurang' ? 'orange' : 'red'; }
+function isOwnPublicWarga(warga = {}){
+  const idMatch = String(warga?._id || '') && String(warga?._id || '') === String(window.PUBLIC_WARGA_ID || '');
+  const rumahMatch = normalizeSearchText(warga?.no_rumah || '') && normalizeSearchText(warga?.no_rumah || '') === normalizeSearchText(window.PUBLIC_WARGA_NO_RUMAH || '');
+  return idMatch || rumahMatch;
+}
 
 async function api(url, options = {}) {
   const res = await fetch(url, options);
@@ -872,24 +877,26 @@ function renderIwkYear(){
     const current = normStatus(row.current?.status);
     const cls = row.has_tunggakan_lama ? 'unpaid' : current === 'bayar' ? 'paid' : current === 'kurang' ? 'partial' : 'unpaid';
     const reason = row.has_tunggakan_lama ? 'Ada tunggakan lama' : labelStatus(current);
-    return `<button class="iwk-status-card ${cls}" type="button" onclick="showIwkStatusDetail('${row.warga?._id || ''}')">
+    const content = `
       <strong>${row.warga?.nama || '-'}</strong>
       <span>${row.warga?.no_rumah || '-'}</span>
-      <small>${reason}</small>
-    </button>`;
+      <small>${reason}</small>`;
+    if(!isOwnPublicWarga(row.warga)) return `<div class="iwk-status-card ${cls} locked-card" aria-disabled="true">${content}</div>`;
+    return `<button class="iwk-status-card ${cls}" type="button" onclick="showIwkStatusDetail('${row.warga?._id || ''}')">${content}</button>`;
   }).join('');
 }
 function showIwkStatusDetail(wargaId){
   const row = iwkYearData.find(x => String(x.warga?._id || '') === String(wargaId));
   const modal = document.getElementById('iwkStatusModal');
   if(!row || !modal) return;
+  if(!isOwnPublicWarga(row.warga)) return;
   const current = row.current || {};
   const previous = row.previous || [];
   const detailRows = [current].concat(previous).filter(Boolean).map(item => {
     const cls = statusClass(item.status);
     return `<tr><td>${item.label || '-'}</td><td><span class="badge outline ${cls}">${labelStatus(item.status)}</span></td><td>${rupiah(item.nominal || 0)}</td></tr>`;
   }).join('');
-  const canUploadBukti = normStatus(current.status) === 'belum_bayar';
+  const canUploadBukti = normStatus(current.status) === 'belum_bayar' && isOwnPublicWarga(row.warga);
   const uploadForm = canUploadBukti ? `
     <form id="formBuktiIwk" class="proof-upload-form" onsubmit="analisaBuktiIwk(event)">
       <input type="hidden" name="bulan" value="${current.bulan || ''}">
@@ -897,6 +904,7 @@ function showIwkStatusDetail(wargaId){
       <label class="field-label">Upload Bukti Transfer
         <input class="input" type="file" name="foto_bukti" accept="image/*" required>
       </label>
+      <p class="proof-info">Untuk sementara sistem hanya dapat menerima bukti transfer sesama BRI dan sesama BCA.</p>
       <button class="btn" type="submit">Analisa Bukti</button>
       <p id="buktiIwkMsg" class="sub"></p>
     </form>
@@ -920,6 +928,10 @@ function showIwkStatusDetail(wargaId){
   modal.classList.remove('hide');
 }
 let pendingBuktiIwkFormData = null;
+let pendingBuktiIwkChecksOk = false;
+function buktiCheckRow(ok, text){
+  return `<li class="${ok ? 'ok' : 'bad'}"><span class="proof-check-mark">${ok ? '✓' : '!'}</span><span>${esc(text)}</span></li>`;
+}
 async function analisaBuktiIwk(event){
   event.preventDefault();
   const form = event.target;
@@ -929,22 +941,35 @@ async function analisaBuktiIwk(event){
   formData.set('mode', 'analisa');
   if(msg) msg.textContent = 'Menganalisa bukti...';
   if(resultEl) resultEl.innerHTML = '';
+  pendingBuktiIwkChecksOk = false;
   try{
     const result = await fetch('/api/public/bukti-iwk', { method:'POST', body: formData }).then(async r => { const d = await r.json(); if(!r.ok) throw new Error(d.message); return d; });
     const data = result.data || {};
     pendingBuktiIwkFormData = new FormData(form);
+    const bankCheckOk = data.validasi_bank_pengirim !== false;
+    pendingBuktiIwkChecksOk = data.cek_text_berhasil === true && data.cek_rekening_sesuai === true && data.cek_periode_sesuai === true && bankCheckOk;
     if(msg) msg.textContent = result.message || 'Analisa bukti selesai.';
     if(resultEl) resultEl.innerHTML = `
       <div class="proof-result-card">
         <h4>Hasil Analisa Bukti</h4>
         <div><span>Status</span><strong>${esc(data.status_analisa || '-')}</strong></div>
+        <div><span>Status Transaksi</span><strong>${esc(data.status_transaksi || '-')}</strong></div>
+        <div><span>Bank Pengirim</span><strong>${esc(data.bank_pengirim || '-')}</strong></div>
         <div><span>No Rek Tujuan</span><strong>${esc(data.no_rekening_tujuan || '-')}</strong></div>
+        <div><span>No Rek Setting</span><strong>${esc(data.rekening_tujuan_setting || '-')}</strong></div>
         <div><span>Nominal Transfer</span><strong>${rupiah(data.nominal_transfer || 0)}</strong></div>
         <div><span>Tanggal Transfer</span><strong>${esc(data.tanggal_transfer || '-')}</strong></div>
+        <ul class="proof-check-list">
+          ${buktiCheckRow(data.cek_text_berhasil === true, 'Ada teks berhasil / sukses')}
+          ${buktiCheckRow(data.cek_rekening_sesuai === true, 'No rekening tujuan sesuai setting')}
+          ${buktiCheckRow(data.cek_periode_sesuai === true, 'Bulan dan tahun transfer sesuai periode IWK')}
+          ${typeof data.validasi_bank_pengirim === 'boolean' ? buktiCheckRow(data.validasi_bank_pengirim === true, 'Bank pengirim didukung sementara: BRI/BCA') : ''}
+        </ul>
         <p>${esc(data.catatan || data.error_analisa || 'Bukti tersimpan untuk verifikasi.')}</p>
         <label class="check-pill proof-confirm-check">
-          <input id="buktiIwkConfirm" type="checkbox" onchange="toggleKirimBuktiIwk()"> Data hasil analisa sudah sesuai/benar
+          <input id="buktiIwkConfirm" type="checkbox" onchange="toggleKirimBuktiIwk()" ${pendingBuktiIwkChecksOk ? '' : 'disabled'}> Data hasil analisa sudah sesuai/benar
         </label>
+        ${pendingBuktiIwkChecksOk ? '' : '<p class="proof-warning">Bukti belum bisa dikirim karena hasil cek otomatis belum lengkap/sesuai.</p>'}
         <button id="btnKirimBuktiIwk" class="btn" type="button" onclick="kirimBuktiIwk()" disabled>Kirim Bukti Bayar</button>
       </div>
     `;
@@ -955,7 +980,7 @@ async function analisaBuktiIwk(event){
 function toggleKirimBuktiIwk(){
   const checked = document.getElementById('buktiIwkConfirm')?.checked === true;
   const btn = document.getElementById('btnKirimBuktiIwk');
-  if(btn) btn.disabled = !checked;
+  if(btn) btn.disabled = !checked || !pendingBuktiIwkChecksOk;
 }
 async function kirimBuktiIwk(){
   const msg = document.getElementById('buktiIwkMsg');
@@ -965,6 +990,10 @@ async function kirimBuktiIwk(){
   }
   if(document.getElementById('buktiIwkConfirm')?.checked !== true) {
     if(msg) msg.textContent = 'Centang konfirmasi data sudah sesuai/benar terlebih dahulu.';
+    return;
+  }
+  if(!pendingBuktiIwkChecksOk) {
+    if(msg) msg.textContent = 'Hasil cek otomatis belum lengkap/sesuai.';
     return;
   }
   pendingBuktiIwkFormData.set('konfirmasi', 'true');
