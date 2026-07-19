@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
   <title>Informasi Keuangan RT02</title>
-  <link rel="stylesheet" href="/css/style.css?v=<%= assetVersion %>">
+  <link rel="stylesheet" href="/css/style.css?v=<%= assetVersion %>-rekening-iwk">
 </head>
 <body class="public-body clean-public">
   <div class="floating-menu-wrap">
@@ -36,6 +36,7 @@
       <div id="pengeluaranModal" class="iwk-status-modal hide"></div>
       <div id="donasiModal" class="iwk-status-modal hide"></div>
       <div id="iwkProgressCard" class="iwk-progress-card"></div>
+      <div id="rekeningIwkCard" class="transfer-info-card hide"></div>
     </section>
 
     <section class="public-panel">
@@ -89,10 +90,10 @@
   <script>
     window.PUBLIC_DASHBOARD = <%= publicMode ? 'true' : 'false' %>;
   </script>
-  <script src="/js/app.js?v=<%= assetVersion %>"></script>
+  <script src="/js/app.js?v=<%= assetVersion %>-rekening-iwk"></script>
   <script>
     async function logoutPublic(){ await fetch('/api/auth/public-logout',{method:'POST'}); location.href='/umum/login'; }
-    loadSaldo();loadIwkProgress();initIwkYearView();loadTunggakanSebelumnya();loadAppVersion();
+    loadSaldo();loadIwkProgress();if(typeof loadRekeningIwk === 'function') loadRekeningIwk();initIwkYearView();loadTunggakanSebelumnya();loadAppVersion();
   </script>
 </body>
 </html>

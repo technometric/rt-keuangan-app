@@ -61,6 +61,66 @@ async function loadAppVersion(){
   } catch(e) {}
 }
 
+async function copyText(value, targetId){
+  try {
+    if(navigator.clipboard?.writeText) await navigator.clipboard.writeText(value);
+    else {
+      const input = document.createElement('input');
+      input.value = value;
+      document.body.appendChild(input);
+      input.select();
+      document.execCommand('copy');
+      input.remove();
+    }
+    const note = document.getElementById(targetId);
+    if(note) {
+      note.textContent = 'No rekening disalin';
+      setTimeout(() => { note.textContent = 'Tap nomor rekening untuk copy'; }, 1800);
+    }
+  } catch(e) {
+    alert('Gagal menyalin nomor rekening.');
+  }
+}
+
+function waLink(noWa = ''){
+  const clean = String(noWa || '').replace(/\D/g,'');
+  return clean ? `https://wa.me/${clean}` : '';
+}
+
+function copyRekeningIwk(){
+  copyText(window.publicRekeningIwk?.no_rekening || '', 'rekeningCopyNote');
+}
+
+async function loadRekeningIwk(){
+  const el = document.getElementById('rekeningIwkCard');
+  if(!el) return;
+  try{
+    const data = await api('/api/public/rekening-iwk');
+    if(!data.tampil) { el.classList.add('hide'); return; }
+    window.publicRekeningIwk = data;
+    const link = waLink(data.no_wa_konfirmasi);
+    el.innerHTML = `
+      <div>
+        <p class="transfer-eyebrow">Pembayaran IWK via Transfer</p>
+        <h3>${esc(data.nama_bank)}</h3>
+        <button class="rekening-copy-btn" type="button" onclick="copyRekeningIwk()" aria-label="Copy nomor rekening">
+          <span>${esc(data.no_rekening)}</span>
+          <i class="copy-icon" aria-hidden="true"></i>
+        </button>
+        <p id="rekeningCopyNote" class="transfer-note">Tap nomor rekening untuk copy</p>
+      </div>
+      <div class="transfer-owner">
+        <span>Atas Nama</span>
+        <strong>${esc(data.nama_pemilik)}</strong>
+        ${link ? `<a class="mini-btn transfer-wa-btn" href="${link}" target="_blank" rel="noopener">Konfirmasi WA</a>` : ''}
+      </div>
+    `;
+    el.classList.remove('hide');
+  }catch(e){
+    el.classList.add('hide');
+  }
+}
+
 async function loadSaldo() {
   let saldo = await api(apiBase('/api/kas/saldo').replace('/api/public/api/kas/saldo','/api/public/saldo'));
   const el = document.getElementById('saldoGrid');
@@ -650,6 +710,10 @@ function syncParamTotal(){
 async function initMaster() {
   const p = await api('/api/parameter-iwk');
   for (const [k,v] of Object.entries(p)) if (formParam.elements[k]) formParam.elements[k].type === 'checkbox' ? formParam.elements[k].checked = !!v : formParam.elements[k].value = v;
+  for (const [k,v] of Object.entries(p.rekening_iwk || {})) {
+    const el = formParam.elements[`rekening_iwk_${k}`];
+    if(el) el.value = v || '';
+  }
   for (const [k,v] of Object.entries(p.public_kas_visible || {})) {
     const el = formParam.elements[`public_kas_${k}`];
     if(el) {

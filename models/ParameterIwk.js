@@ -12,6 +12,12 @@ const ParameterIwkSchema = new mongoose.Schema({
   minimal_nominal_iwk: { type: Number, default: 17000 },
   iwk_cutoff_bulan: { type: Number, default: 7 },
   iwk_cutoff_tahun: { type: Number, default: 2026 },
+  rekening_iwk: {
+    no_rekening: { type: String, default: '' },
+    nama_bank: { type: String, default: '' },
+    nama_pemilik: { type: String, default: '' },
+    no_wa_konfirmasi: { type: String, default: '' }
+  },
   jumlah_kk_iuran_rw: { type: Number, default: 75 },
   iuran_ambulan_bulanan: { type: Number, default: 50000 },
   tampil_tunggakan_umum: { type: Boolean, default: false },

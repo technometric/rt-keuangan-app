@@ -25,6 +25,12 @@ function normalizePayload(body = {}, old = {}) {
   payload.minimal_nominal_iwk = Number(body.minimal_nominal_iwk ?? old.minimal_nominal_iwk ?? (Number(payload.uang_satpam || 0) + Number(payload.uang_sampah || 0)));
   payload.iwk_cutoff_bulan = Math.min(12, Math.max(1, Number(body.iwk_cutoff_bulan ?? old.iwk_cutoff_bulan ?? 7)));
   payload.iwk_cutoff_tahun = Number(body.iwk_cutoff_tahun ?? old.iwk_cutoff_tahun ?? 2026);
+  payload.rekening_iwk = {
+    no_rekening: String(body.rekening_iwk_no_rekening ?? old.rekening_iwk?.no_rekening ?? '').trim(),
+    nama_bank: String(body.rekening_iwk_nama_bank ?? old.rekening_iwk?.nama_bank ?? '').trim(),
+    nama_pemilik: String(body.rekening_iwk_nama_pemilik ?? old.rekening_iwk?.nama_pemilik ?? '').trim(),
+    no_wa_konfirmasi: String(body.rekening_iwk_no_wa_konfirmasi ?? old.rekening_iwk?.no_wa_konfirmasi ?? '').trim()
+  };
   payload.jumlah_kk_iuran_rw = Number(body.jumlah_kk_iuran_rw ?? old.jumlah_kk_iuran_rw ?? 75);
   payload.iuran_ambulan_bulanan = Number(body.iuran_ambulan_bulanan ?? old.iuran_ambulan_bulanan ?? 50000);
   payload.tampil_tunggakan_umum = body.tampil_tunggakan_umum === true || body.tampil_tunggakan_umum === 'true' || body.tampil_tunggakan_umum === 'on';
@@ -55,6 +61,7 @@ async function getParam() {
   if (!Number(param.minimal_nominal_iwk || 0)) param.minimal_nominal_iwk = Number(param.uang_satpam || 0) + Number(param.uang_sampah || 0);
   if (!param.iwk_cutoff_bulan) param.iwk_cutoff_bulan = 7;
   if (!param.iwk_cutoff_tahun) param.iwk_cutoff_tahun = 2026;
+  if (!param.rekening_iwk) param.rekening_iwk = {};
   if (!param.jumlah_kk_iuran_rw) param.jumlah_kk_iuran_rw = 75;
   if (!param.iuran_ambulan_bulanan) param.iuran_ambulan_bulanan = 50000;
   if (!param.public_kas_visible) param.public_kas_visible = {};

@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>Master Data</title>
-  <link rel="stylesheet" href="/css/style.css?v=<%= assetVersion %>">
+  <link rel="stylesheet" href="/css/style.css?v=<%= assetVersion %>-rekening-iwk">
 </head>
 <body>
   <div class="app">
@@ -34,6 +34,17 @@
           <div class="row">
             <label class="field-label">Jumlah KK Iuran RW<input class="input" name="jumlah_kk_iuran_rw" type="number" min="0" placeholder="75"></label>
             <label class="field-label">Iuran Ambulan Bulanan<input class="input" name="iuran_ambulan_bulanan" type="number" min="0" placeholder="50000"></label>
+          </div>
+          <div class="nested-setting-panel">
+            <h3>Rekening Transfer IWK</h3>
+            <div class="row">
+              <label class="field-label">No Rekening<input class="input" name="rekening_iwk_no_rekening" placeholder="Nomor rekening"></label>
+              <label class="field-label">Nama Bank<input class="input" name="rekening_iwk_nama_bank" placeholder="Nama bank"></label>
+              <label class="field-label">Nama Pemilik Rekening<input class="input" name="rekening_iwk_nama_pemilik" placeholder="Nama pemilik rekening"></label>
+            </div>
+            <div class="row">
+              <label class="field-label">No WA Konfirmasi<input class="input" name="rekening_iwk_no_wa_konfirmasi" placeholder="628xxxxxxxxxx"></label>
+            </div>
           </div>
           <div class="param-total-card">
             Total IWK: <strong id="paramTotalText">Rp 0</strong>
@@ -98,7 +109,7 @@
       </div>
     </main>
   </div>
-  <script src="/js/app.js?v=<%= assetVersion %>"></script>
+  <script src="/js/app.js?v=<%= assetVersion %>-rekening-iwk"></script>
   <script>initMaster()</script>
 </body>
 </html>

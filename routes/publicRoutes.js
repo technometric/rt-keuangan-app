@@ -63,6 +63,19 @@ router.get('/saldo', async (req, res) => {
   res.json(filtered);
 });
 
+router.get('/rekening-iwk', async (req, res) => {
+  const param = await ParameterIwk.findOne({ aktif: true }).sort({ createdAt: -1 }).lean();
+  const rekening = param?.rekening_iwk || {};
+  const tampil = !!(rekening.no_rekening && rekening.nama_bank && rekening.nama_pemilik);
+  res.json({
+    tampil,
+    no_rekening: rekening.no_rekening || '',
+    nama_bank: rekening.nama_bank || '',
+    nama_pemilik: rekening.nama_pemilik || '',
+    no_wa_konfirmasi: rekening.no_wa_konfirmasi || ''
+  });
+});
+
 router.get('/pengeluaran-bulan-terakhir', async (req, res) => {
   const { start, end } = bulanTerakhirRange(1);
   const jenisKas = await publicKasKeys();
