@@ -82,9 +82,10 @@ async function copyText(value, targetId){
   }
 }
 
-function waLink(noWa = ''){
+function waLink(noWa = '', message = ''){
   const clean = String(noWa || '').replace(/\D/g,'');
-  return clean ? `https://wa.me/${clean}` : '';
+  if(!clean) return '';
+  return `https://wa.me/${clean}${message ? `?text=${encodeURIComponent(message)}` : ''}`;
 }
 
 function copyRekeningIwk(){
@@ -98,7 +99,8 @@ async function loadRekeningIwk(){
     const data = await api('/api/public/rekening-iwk');
     if(!data.tampil) { el.classList.add('hide'); return; }
     window.publicRekeningIwk = data;
-    const link = waLink(data.no_wa_konfirmasi);
+    const defaultMessage = `Assalamualaikum, saya ingin konfirmasi pembayaran IWK.\nNama: ${data.warga?.nama || '-'}\nNo Rumah: ${data.warga?.no_rumah || '-'}\nBank Tujuan: ${data.nama_bank}\nNo Rekening: ${data.no_rekening}\nSaya akan mengirim bukti transfer.`;
+    const link = waLink(data.no_wa_konfirmasi, defaultMessage);
     el.innerHTML = `
       <div>
         <p class="transfer-eyebrow">Pembayaran IWK via Transfer</p>
@@ -108,6 +110,7 @@ async function loadRekeningIwk(){
           <i class="copy-icon" aria-hidden="true"></i>
         </button>
         <p id="rekeningCopyNote" class="transfer-note">Tap nomor rekening untuk copy</p>
+        <p class="transfer-proof-note">Kirim bukti transfer saat konfirmasi pembayaran.</p>
       </div>
       <div class="transfer-owner">
         <span>Atas Nama</span>

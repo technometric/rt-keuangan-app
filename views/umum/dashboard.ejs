@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
   <title>Informasi Keuangan RT02</title>
-  <link rel="stylesheet" href="/css/style.css?v=<%= assetVersion %>-rekening-iwk">
+  <link rel="stylesheet" href="/css/style.css?v=<%= assetVersion %>-rekening-iwk-proof">
 </head>
 <body class="public-body clean-public">
   <div class="floating-menu-wrap">
@@ -90,7 +90,7 @@
   <script>
     window.PUBLIC_DASHBOARD = <%= publicMode ? 'true' : 'false' %>;
   </script>
-  <script src="/js/app.js?v=<%= assetVersion %>-rekening-iwk"></script>
+  <script src="/js/app.js?v=<%= assetVersion %>-rekening-iwk-proof"></script>
   <script>
     async function logoutPublic(){ await fetch('/api/auth/public-logout',{method:'POST'}); location.href='/umum/login'; }
     loadSaldo();loadIwkProgress();if(typeof loadRekeningIwk === 'function') loadRekeningIwk();initIwkYearView();loadTunggakanSebelumnya();loadAppVersion();

@@ -72,7 +72,11 @@ router.get('/rekening-iwk', async (req, res) => {
     no_rekening: rekening.no_rekening || '',
     nama_bank: rekening.nama_bank || '',
     nama_pemilik: rekening.nama_pemilik || '',
-    no_wa_konfirmasi: rekening.no_wa_konfirmasi || ''
+    no_wa_konfirmasi: rekening.no_wa_konfirmasi || '',
+    warga: {
+      nama: req.session.publicWarga?.nama || '',
+      no_rumah: req.session.publicWarga?.no_rumah || ''
+    }
   });
 });
 
