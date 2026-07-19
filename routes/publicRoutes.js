@@ -71,6 +71,11 @@ function onlyDigits(value = '') {
 function normalizeReceiptText(value = '') {
   return String(value || '').toLowerCase().replace(/\bno\b/g, '').replace(/[^a-z0-9]/g, '');
 }
+function bankPengirimDidukung(hasil = {}) {
+  if (hasil.validasi_bank_pengirim === true) return true;
+  if (hasil.validasi_bank_pengirim === false) return false;
+  return ['BRI', 'BCA'].includes(String(hasil.bank_pengirim || '').trim().toUpperCase());
+}
 function detectTransferSuccess(hasil = {}) {
   return /berhasil|sukses/i.test(`${hasil.status_transaksi || ''} ${hasil.raw_text || ''}`);
 }
@@ -113,7 +118,7 @@ function buildBuktiChecks(hasil = {}, param = {}, bulan, tahun, warga = {}) {
   const receiptText = normalizeReceiptText(hasil.catatan_transfer || '');
   return {
     rekening_tujuan_setting: rekeningSetting,
-    validasi_bank_pengirim: typeof hasil.validasi_bank_pengirim === 'boolean' ? hasil.validasi_bank_pengirim : null,
+    validasi_bank_pengirim: bankPengirimDidukung(hasil),
     validasi_catatan_transfer: validasiCatatanTransfer,
     cek_text_berhasil: detectTransferSuccess(hasil),
     cek_rekening_sesuai: !!rekeningSettingDigits && !!rekeningOcrDigits && rekeningSettingDigits === rekeningOcrDigits,
