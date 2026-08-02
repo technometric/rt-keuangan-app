@@ -2,7 +2,7 @@
 
 Isi patch:
 - Uang sampah, uang satpam, dan kas RW disembunyikan dari laporan keuangan warga.
-- Saldo laporan hanya menampilkan kas yang relevan untuk warga: Kas RT, Kas Sosial, Santunan Kematian, Kas Donasi, Tabungan Sampah, dan Danus.
+- Saldo laporan hanya menampilkan kas yang relevan untuk warga: Kas RT, Kas Sosial, Dana Santunan, Kas Donasi, Tabungan Sampah, dan Danus.
 - Transaksi laporan juga menyembunyikan pos uang sampah, uang satpam, dan kas RW.
 - Tambah tombol **Buat Pengeluaran Iuran RW** untuk membuat/memperbarui 1 transaksi kredit Kas RT dengan keterangan `Iuran sampah, satpam dan kas RW`.
 - Periode laporan 1 bulan/3 bulan sekarang selalu mengambil bulan sebelumnya dari bulan laporan. Contoh dibuat bulan Juni: 1 bulan = Mei, 3 bulan = Maret-Mei.
@@ -35,7 +35,7 @@ Patch v1.3.2 Revisi KAs RW menjadi Kas PKK
 14. untuk tampilan Status pembayaran iwk d buat menyamping saja misal jadi 10 kolom, d buat tombol card saja nama KK bawahnya no. Rumah 
     kl d klik/tap muncul bulan kebelakang dan skrg yg blm bayar, ini kan periode baru saya jd bendahara maka akan d tampilkan yg masih belum bayar 12 sebelumnya saja dr juli 2025, kl yg juli skrg d lihat dari status bayar iwk saja kl yang bulan juni 2026 - juni 2025 itu ada settingan centangan d menu Iuran wajib IWK khusus admin saya sj kolomnya tunggakan iwk bulan sebelumnya juni 2026 -juni 2025
     jd kl yg merah itu bisa kmungkinan blm bayar bulan sebelumnya
-15. admin bisa hide/show info kas RT, kas Sosial, kas donasi, Tabungan sampah, santunan kematian dan danus d web umum
+15. admin bisa hide/show info kas RT, kas Sosial, kas donasi, Tabungan sampah, Dana Santunan dan danus d web umum
 16. nama bulan full name saja
 16. menambahkan label kolom input data pada web input pembayaran IWK, untuk dropdown warga apakah bisa d buat jgn menggunakan default web tp custom cupay bisa mudah d cari dan d scroll tdk menutupi halaman
 17. admin bisa hide/show web Riwayat IWK di web input pembayaran iwk 

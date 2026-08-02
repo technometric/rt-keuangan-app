@@ -17,6 +17,7 @@ router.get('/', requireRole('admin','petugas','umum'), async (req, res) => {
 function normalizeWargaBody(body = {}) {
   return {
     ...body,
+    anggota_dana_santunan: body.anggota_dana_santunan === true || body.anggota_dana_santunan === 'true' || body.anggota_dana_santunan === 'on' || body.anggota_dana_santunan === '1',
     aktif: body.aktif === undefined ? true : body.aktif === true || body.aktif === 'true' || body.aktif === 'on' || body.aktif === '1'
   };
 }

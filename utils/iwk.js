@@ -1,4 +1,23 @@
-function bagiIwk(nominalBayar, parameter) {
+const komponenIwk = ['uang_satpam','uang_sampah','kas_pkk','kas_rt','kas_sosial','santunan_kematian'];
+
+function isAnggotaDanaSantunan(warga = {}) {
+  return warga?.anggota_dana_santunan === true;
+}
+
+function totalIwkParameter(parameter = {}) {
+  return komponenIwk.reduce((total, key) => {
+    const value = parameter[key] ?? (key === 'kas_pkk' ? parameter.kas_rw : 0);
+    return total + Number(value || 0);
+  }, 0);
+}
+
+function totalIwkWarga(parameter = {}, warga = {}) {
+  const total = totalIwkParameter(parameter);
+  if (isAnggotaDanaSantunan(warga)) return total;
+  return Math.max(0, total - Number(parameter?.santunan_kematian || 0));
+}
+
+function bagiIwk(nominalBayar, parameter, warga = {}) {
   let sisa = Number(nominalBayar || 0);
   const hasil = {
     uang_satpam: 0,
@@ -10,6 +29,7 @@ function bagiIwk(nominalBayar, parameter) {
   };
   const urutan = Object.keys(hasil);
   for (const key of urutan) {
+    if (key === 'santunan_kematian' && !isAnggotaDanaSantunan(warga)) continue;
     const value = parameter[key] ?? (key === 'kas_pkk' ? parameter.kas_rw : 0);
     const target = Number(value || 0);
     const masuk = Math.min(sisa, target);
@@ -37,4 +57,4 @@ function statusIwk(nominalBayar, batasBayar) {
   return 'belum_bayar';
 }
 
-module.exports = { bagiIwk, minimumBayarIwk, batasStatusBayarIwk, statusIwk };
+module.exports = { bagiIwk, minimumBayarIwk, batasStatusBayarIwk, statusIwk, totalIwkParameter, totalIwkWarga, isAnggotaDanaSantunan };

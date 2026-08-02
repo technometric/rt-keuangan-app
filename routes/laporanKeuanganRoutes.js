@@ -14,7 +14,7 @@ const VISIBLE_REPORT_KAS = ['kas_rt', 'kas_sosial', 'santunan_kematian', 'kas_do
 const jenisLabel = {
   kas_rt: 'Kas RT',
   kas_sosial: 'Kas Sosial',
-  santunan_kematian: 'Santunan Kematian',
+  santunan_kematian: 'Dana Santunan',
   kas_donasi: 'Kas Donasi',
   tabungan_sampah: 'Tabungan Sampah',
   uang_sampah: 'Uang Sampah',

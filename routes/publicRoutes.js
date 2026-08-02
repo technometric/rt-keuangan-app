@@ -10,7 +10,7 @@ const BuktiTransferIwk = require('../models/BuktiTransferIwk');
 const User = require('../models/User');
 const { saldoSemuaKas } = require('../utils/kas');
 const { analisaBuktiTransfer } = require('../utils/buktiTransferOcr');
-const { bagiIwk } = require('../utils/iwk');
+const { bagiIwk, totalIwkWarga } = require('../utils/iwk');
 const { requirePublicWarga } = require('../middleware/auth');
 const router = express.Router();
 
@@ -287,7 +287,7 @@ router.post('/bukti-iwk', upload.single('foto_bukti'), async (req, res) => {
       grup_pembayaran: `bukti-${bukti._id}`,
       bulan_ke: 1,
       total_bulan: 1,
-      rincian: bagiIwk(nominalTransfer, param || {})
+      rincian: bagiIwk(nominalTransfer, param || {}, warga)
     });
     bukti.iuran_wajib = iuran._id;
     await bukti.save();
@@ -409,14 +409,15 @@ router.get('/iwk-progress', async (req, res) => {
   const tahun = Number(req.query.tahun || now.getFullYear());
   const param = await ParameterIwk.findOne({ aktif: true }).sort({ createdAt: -1 }).lean();
   const totalIwk = Number(param?.total_iwk || 0);
-  const totalWarga = await WajibIwk.countDocuments({ aktif: { $ne: false } });
+  const wargaAktif = await WajibIwk.find({ aktif: { $ne: false } }).lean();
+  const totalWarga = wargaAktif.length;
   const agg = await IuranWajib.aggregate([
     { $match: { bulan, tahun } },
     { $group: { _id: null, pendapatan: { $sum: '$nominal_bayar' }, jumlahBayar: { $sum: { $cond: [{ $gt: ['$nominal_bayar', 0] }, 1, 0] } } } }
   ]);
   const pendapatan = Number(agg[0]?.pendapatan || 0);
   const jumlahBayar = Number(agg[0]?.jumlahBayar || 0);
-  const target = totalIwk * totalWarga;
+  const target = wargaAktif.reduce((sum, warga) => sum + totalIwkWarga(param || {}, warga), 0);
   const persen = target > 0 ? Math.round((pendapatan / target) * 100) : 0;
   res.json({ bulan, tahun, total_iwk: totalIwk, total_warga: totalWarga, jumlah_bayar: jumlahBayar, pendapatan, target, persen });
 });

@@ -8,7 +8,7 @@ const kasLabels = {
   kas_sosial: 'Kas Sosial',
   kas_donasi: 'Kas Donasi',
   tabungan_sampah: 'Tabungan Sampah',
-  santunan_kematian: 'Santunan Kematian',
+  santunan_kematian: 'Dana Santunan',
   danus: 'Danus'
 };
 const nice = s => kasLabels[s] || String(s || '').replaceAll('_',' ').replace(/\b\w/g, c => c.toUpperCase());
@@ -23,6 +23,8 @@ let iwkYearData = [];
 let riwayatIwkRows = [];
 let activePaymentTab = 'iwk';
 let lastTotalIwk = 0;
+let lastParamIwk = null;
+let selectedIwkWarga = null;
 
 function esc(s){
   return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -246,7 +248,7 @@ async function loadIwkProgress(targetId = 'iwkProgressCard') {
   if (!el) return;
   const now = new Date();
   const data = await api(`/api/public/iwk-progress?bulan=${now.getMonth()+1}&tahun=${now.getFullYear()}`);
-  const rumus = `${rupiah(data.pendapatan)} / (${rupiah(data.total_iwk)} × ${data.total_warga})`;
+  const rumus = `${rupiah(data.pendapatan)} / Target ${rupiah(data.target)}`;
   el.innerHTML = `
     <div class="progress-title">Pendapatan IWK Bulan Berjalan</div>
     <div class="progress-money">${rupiah(data.pendapatan)} <span>/ ${rupiah(data.target)}</span></div>
@@ -264,7 +266,26 @@ async function loadWarga(selectId = 'warga') {
   if (el && el.tagName === 'SELECT') el.innerHTML = data.map(w => `<option value="${w._id}">${esc(w.no_rumah)} - ${esc(w.nama)} (${esc(w.area)})</option>`).join('');
   if (el && el.tagName !== 'SELECT') renderCustomWargaSelect(data, selectId);
   const rows = document.getElementById('wargaRows');
-  if (rows) rows.innerHTML = data.map((w,i) => `<tr><td>${i+1}</td><td>${esc(w.no_rumah)}</td><td>${esc(w.nama)}</td><td>${esc(w.area)}</td><td>${esc(w.hp || '-')}</td><td>${w.aktif === false ? '<span class="danger-text">Nonaktif</span>' : '<span class="success-text">Aktif</span>'}</td><td class="actions-cell"><button class="mini-btn" onclick='editWarga(${JSON.stringify(w)})'>Edit</button> <button class="mini-btn danger" onclick="deleteWarga('${w._id}')">Hapus</button></td></tr>`).join('');
+  if (rows) rows.innerHTML = data.map((w,i) => `<tr><td>${i+1}</td><td>${esc(w.no_rumah)}</td><td>${esc(w.nama)}</td><td>${esc(w.area)}</td><td>${esc(w.hp || '-')}</td><td>${w.anggota_dana_santunan ? '<span class="success-text">Anggota</span>' : '<span class="sub">Tidak</span>'}</td><td>${w.aktif === false ? '<span class="danger-text">Nonaktif</span>' : '<span class="success-text">Aktif</span>'}</td><td class="actions-cell"><button class="mini-btn" onclick='editWarga(${JSON.stringify(w)})'>Edit</button> <button class="mini-btn danger" onclick="deleteWarga('${w._id}')">Hapus</button></td></tr>`).join('');
+}
+
+function totalIwkForWarga(warga = selectedIwkWarga, param = lastParamIwk){
+  if(!param) return lastTotalIwk;
+  const keys = ['uang_satpam','uang_sampah','kas_pkk','kas_rt','kas_sosial','santunan_kematian'];
+  const fullTotal = keys.reduce((total, key) => total + Number((param[key] ?? (key === 'kas_pkk' ? param.kas_rw : 0)) || 0), 0);
+  return warga?.anggota_dana_santunan ? fullTotal : Math.max(0, fullTotal - Number(param.santunan_kematian || 0));
+}
+
+function updateSelectedIwkWargaInfo(warga){
+  selectedIwkWarga = warga || null;
+  lastTotalIwk = totalIwkForWarga(selectedIwkWarga);
+  const info = document.getElementById('iwkWargaInfo');
+  if(info) {
+    info.textContent = selectedIwkWarga?.anggota_dana_santunan
+      ? `Anggota Dana Santunan · Total IWK ${rupiah(lastTotalIwk)} per bulan`
+      : `Bukan anggota Dana Santunan · Total IWK ${rupiah(lastTotalIwk)} per bulan`;
+  }
+  updateNominalForCheckedMonths();
 }
 
 function renderCustomWargaSelect(data, inputId = 'warga'){
@@ -275,7 +296,8 @@ function renderCustomWargaSelect(data, inputId = 'warga'){
   const setSelected = warga => {
     hidden.value = warga?._id || '';
     const search = wrap.querySelector('.custom-warga-search');
-    if(search) search.value = warga ? `${warga.no_rumah} - ${warga.nama}` : '';
+    if(search) search.value = warga ? `${warga.no_rumah} - ${warga.nama}${warga.anggota_dana_santunan ? ' (Anggota Dana Santunan)' : ''}` : '';
+    if(inputId === 'warga' && isPaymentFormWarga(inputId)) updateSelectedIwkWargaInfo(warga);
     wrap.classList.remove('open');
   };
   const renderOptions = rows => {
@@ -284,7 +306,7 @@ function renderCustomWargaSelect(data, inputId = 'warga'){
     list.innerHTML = rows.length ? rows.map(w => `
       <button type="button" class="custom-warga-option" data-id="${esc(w._id)}">
         <strong>${esc(w.nama)}</strong>
-        <span>${esc(w.no_rumah)} · ${esc(w.area || '-')}</span>
+        <span>${esc(w.no_rumah)} · ${esc(w.area || '-')}${w.anggota_dana_santunan ? ' · Anggota Dana Santunan' : ''}</span>
       </button>
     `).join('') : '<div class="custom-warga-empty">Warga tidak ditemukan.</div>';
     list.querySelectorAll('.custom-warga-option').forEach(btn => {
@@ -327,6 +349,7 @@ function editWarga(w){
   form.hp.value = w.hp || '';
   form.no_rumah.value = w.no_rumah || '';
   form.area.value = w.area || 'utara';
+  if(form.anggota_dana_santunan) form.anggota_dana_santunan.checked = w.anggota_dana_santunan === true;
   if(form.aktif) form.aktif.checked = w.aktif !== false;
   const title = document.getElementById('formWargaTitle');
   if(title) title.textContent = 'Edit Warga Wajib IWK';
@@ -340,6 +363,7 @@ function resetWargaForm(){
   if(!form) return;
   form.reset();
   form.warga_id.value = '';
+  if(form.anggota_dana_santunan) form.anggota_dana_santunan.checked = false;
   if(form.aktif) form.aktif.checked = true;
   const title = document.getElementById('formWargaTitle');
   if(title) title.textContent = 'Tambah Warga Wajib IWK';
@@ -525,6 +549,12 @@ function checkedMonthCount(){
   return Math.max(1, checklist.querySelectorAll('input:checked').length);
 }
 
+function checkedIwkMonths(){
+  const checklist = document.getElementById('bulanChecklist');
+  if(!checklist) return [];
+  return [...checklist.querySelectorAll('input[name="bulan_list"]:checked:not(:disabled)')].map(input => Number(input.value)).filter(Boolean);
+}
+
 function updateNominalForCheckedMonths(){
   const nominal = document.getElementById('nominalBayar');
   if(nominal && lastTotalIwk > 0) {
@@ -561,13 +591,15 @@ async function setDefaultNominalIwk(){
   if(!nominal) return;
   try{
     const p = await api('/api/parameter-iwk');
-    lastTotalIwk = Number(p.total_iwk || 0);
+    lastParamIwk = p;
+    lastTotalIwk = totalIwkForWarga(selectedIwkWarga, p);
     const minimal = Number(p.minimal_nominal_iwk || 0);
     if(minimal > 0) {
       nominal.min = minimal * checkedMonthCount();
       nominal.dataset.minPerBulan = minimal;
     }
     applyIwkCutoffToChecklist(Number(p.iwk_cutoff_bulan || 7), Number(p.iwk_cutoff_tahun || 2026));
+    updateSelectedIwkWargaInfo(selectedIwkWarga);
     updateNominalForCheckedMonths();
   }catch(e){}
 }
@@ -579,7 +611,11 @@ function bindIwkForm() {
     e.preventDefault();
     const msg = document.getElementById('msg');
     try {
-      const result = await fetch('/api/iuran-wajib', { method: 'POST', body: new FormData(form) }).then(async r => { const d = await r.json(); if(!r.ok) throw new Error(d.message); return d; });
+      const formData = new FormData(form);
+      const months = checkedIwkMonths();
+      if(document.getElementById('bulanChecklist') && !months.length) throw new Error('Pilih minimal 1 bulan pembayaran IWK.');
+      if(months.length) formData.set('bulan_list_json', JSON.stringify(months));
+      const result = await fetch('/api/iuran-wajib', { method: 'POST', body: formData }).then(async r => { const d = await r.json(); if(!r.ok) throw new Error(d.message); return d; });
       form.reset(); setupBulanMulai(); await loadWarga(); await setDefaultNominalIwk(); msg.textContent = result.message || 'Pembayaran berhasil disimpan.'; await loadIwk(); await loadPetugasBulanIniTotal();
     } catch (err) { msg.textContent = err.message; }
   });
@@ -832,15 +868,25 @@ async function initMaster() {
   });
   formWarga.addEventListener('submit', async e => {
     e.preventDefault();
-    const body = Object.fromEntries(new FormData(e.target).entries());
-    const id = body.warga_id;
-    delete body.warga_id;
-    body.aktif = e.target.aktif?.checked === true;
-    const method = id ? 'PUT' : 'POST';
-    const url = id ? `/api/wajib-iwk/${id}` : '/api/wajib-iwk';
-    await api(url, { method, headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) });
-    resetWargaForm();
-    await loadWarga();
+    const msg = document.getElementById('wargaMsg');
+    if(msg) msg.textContent = '';
+    try {
+      const session = await api('/api/auth/me');
+      if(session.user?.role !== 'admin') throw new Error('Sesi admin sudah tidak aktif. Silakan login ulang sebagai admin.');
+      const body = Object.fromEntries(new FormData(e.target).entries());
+      const id = body.warga_id;
+      delete body.warga_id;
+      body.aktif = e.target.aktif?.checked === true;
+      body.anggota_dana_santunan = e.target.anggota_dana_santunan?.checked === true;
+      const method = id ? 'PUT' : 'POST';
+      const url = id ? `/api/wajib-iwk/${id}` : '/api/wajib-iwk';
+      await api(url, { method, headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) });
+      resetWargaForm();
+      if(msg) msg.textContent = 'Data warga berhasil tersimpan.';
+      await loadWarga();
+    } catch (err) {
+      if(msg) msg.textContent = err.message === 'Akses ditolak' ? 'Akses ditolak. Silakan login ulang sebagai admin.' : err.message;
+    }
   });
   await loadWarga();
   await loadParameterList();

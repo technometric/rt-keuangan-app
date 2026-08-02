@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>Master Data</title>
-  <link rel="stylesheet" href="/css/style.css?v=<%= assetVersion %>-bukti-iwk-confirm">
+  <link rel="stylesheet" href="/css/style.css?v=<%= assetVersion %>-v1312-dana-santunan-fix1">
 </head>
 <body>
   <div class="app">
@@ -24,7 +24,7 @@
           <div class="row">
             <label class="field-label">Kas RT<input class="input" name="kas_rt" type="number" placeholder="Kas RT"></label>
             <label class="field-label">Kas Sosial<input class="input" name="kas_sosial" type="number" placeholder="Kas Sosial"></label>
-            <label class="field-label">Santunan Kematian<input class="input" name="santunan_kematian" type="number" placeholder="Santunan Kematian"></label>
+            <label class="field-label">Dana Santunan<input class="input" name="santunan_kematian" type="number" placeholder="Dana Santunan"></label>
           </div>
           <div class="row">
             <label class="field-label">Minimal Nominal IWK<input class="input" name="minimal_nominal_iwk" type="number" min="0" placeholder="17000"></label>
@@ -58,7 +58,7 @@
             <label><input type="hidden" name="public_kas_kas_sosial" value="false"><input type="checkbox" name="public_kas_kas_sosial" value="true"> Kas Sosial</label>
             <label><input type="hidden" name="public_kas_kas_donasi" value="false"><input type="checkbox" name="public_kas_kas_donasi" value="true"> Kas Donasi</label>
             <label><input type="hidden" name="public_kas_tabungan_sampah" value="false"><input type="checkbox" name="public_kas_tabungan_sampah" value="true"> Tabungan Sampah</label>
-            <label><input type="hidden" name="public_kas_santunan_kematian" value="false"><input type="checkbox" name="public_kas_santunan_kematian" value="true"> Santunan Kematian</label>
+            <label><input type="hidden" name="public_kas_santunan_kematian" value="false"><input type="checkbox" name="public_kas_santunan_kematian" value="true"> Dana Santunan</label>
             <label><input type="hidden" name="public_kas_danus" value="false"><input type="checkbox" name="public_kas_danus" value="true"> Danus</label>
           </div>
           <br>
@@ -73,7 +73,7 @@
         <h2>Riwayat Parameter IWK</h2>
         <div class="table-scroll">
           <table>
-            <thead><tr><th>Tanggal</th><th>Total</th><th>Satpam</th><th>Sampah</th><th>Kas PKK</th><th>Kas RT</th><th>Sosial</th><th>Santunan</th><th>KK RW</th><th>Tunggakan Umum</th><th>Kas Umum</th><th>Status</th></tr></thead>
+            <thead><tr><th>Tanggal</th><th>Total</th><th>Satpam</th><th>Sampah</th><th>Kas PKK</th><th>Kas RT</th><th>Sosial</th><th>Dana Santunan</th><th>KK RW</th><th>Tunggakan Umum</th><th>Kas Umum</th><th>Status</th></tr></thead>
             <tbody id="parameterRows"></tbody>
           </table>
         </div>
@@ -91,10 +91,12 @@
           <div class="row">
             <input class="input" name="no_rumah" placeholder="No Rumah" required>
             <select class="select" name="area"><option value="utara">Utara</option><option value="tengah">Tengah</option><option value="selatan">Selatan</option></select>
+            <label class="check-pill inline-check"><input type="checkbox" name="anggota_dana_santunan"> Anggota Dana Santunan</label>
             <label class="check-pill inline-check"><input type="checkbox" name="aktif" checked> Aktif</label>
             <button id="btnWargaSubmit" class="btn">Tambah Warga</button>
             <button type="button" class="btn muted" onclick="resetWargaForm()">Batal/Reset</button>
           </div>
+          <p id="wargaMsg" class="sub"></p>
         </form>
       </div>
 
@@ -102,14 +104,14 @@
         <h2>Daftar Warga Wajib IWK</h2>
         <div class="table-scroll">
           <table>
-            <thead><tr><th>No</th><th>No Rumah</th><th>Nama</th><th>Area</th><th>HP</th><th>Status</th><th>Aksi</th></tr></thead>
+            <thead><tr><th>No</th><th>No Rumah</th><th>Nama</th><th>Area</th><th>HP</th><th>Dana Santunan</th><th>Status</th><th>Aksi</th></tr></thead>
             <tbody id="wargaRows"></tbody>
           </table>
         </div>
       </div>
     </main>
   </div>
-  <script src="/js/app.js?v=<%= assetVersion %>-bukti-iwk-confirm"></script>
+  <script src="/js/app.js?v=<%= assetVersion %>-v1312-dana-santunan-fix1"></script>
   <script>initMaster()</script>
 </body>
 </html>
