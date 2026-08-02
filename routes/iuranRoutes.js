@@ -37,6 +37,21 @@ function periodValue(bulan, tahun) {
 const bulanFull = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
 function rp(n){ return 'Rp ' + Number(n || 0).toLocaleString('id-ID'); }
 
+async function perbaikiKasDanaSantunanLama() {
+  const res = await TransaksiKas.updateMany(
+    { sumber: 'dana_santunan', jenis_kas: 'kas_sosial' },
+    { $set: { jenis_kas: 'santunan_kematian' } }
+  );
+  if (res.modifiedCount > 0) {
+    await hitungUlangSaldoKas('kas_sosial');
+    await hitungUlangSaldoKas('santunan_kematian');
+  }
+}
+
+function bolehKelolaTransaksi(req, trx) {
+  return req.session.user.role === 'admin' || String(trx.dibuat_oleh) === String(req.session.user.id);
+}
+
 function normalizeRawArray(value) {
   if (Array.isArray(value)) return value;
   if (value === undefined || value === null || value === '') return [];
@@ -116,7 +131,7 @@ router.get('/laporan-bulanan/pdf', requireRole('admin'), async (req, res) => {
   doc.font('Helvetica-Bold').fontSize(18).text('Laporan Bulanan Pemasukan IWK', { align: 'center' });
   doc.font('Helvetica').fontSize(11).text(`Periode: ${periode}`, { align: 'center' });
   doc.moveDown();
-  doc.font('Helvetica-Bold').fontSize(12).text(`Total pemasukan: ${rp(total)}`);
+  doc.font('Helvetica-Bold').fontSize(12).text(`Total pemasukan IWK: ${rp(total)}`);
   doc.font('Helvetica').fontSize(10).text(`Jumlah data pembayaran: ${rows.length}`);
   doc.moveDown();
 
@@ -231,7 +246,7 @@ router.post('/', requireRole('admin','petugas'), upload.single('foto_bayar'), as
     const periode = periods[i];
     const nominalPeriode = Math.min(sisaBayar, totalIwk);
     sisaBayar -= nominalPeriode;
-    const rincian = bagiIwk(nominalPeriode, param, warga);
+    const rincian = bagiIwk(nominalPeriode, param);
     const tanggalPeriode = new Date(periode.tahun, periode.bulan - 1, tanggalInput.getDate(), tanggalInput.getHours(), tanggalInput.getMinutes());
 
     const iuran = await IuranWajib.create({
@@ -294,6 +309,124 @@ router.get('/donasi/riwayat', requireRole('admin','petugas'), async (req, res) =
   res.json({ bulan, tahun, rows });
 });
 
+router.put('/donasi/:id', requireRole('admin','petugas'), async (req, res) => {
+  const trx = await TransaksiKas.findOne({ _id: req.params.id, sumber: 'donasi', jenis_kas: 'kas_donasi' });
+  if (!trx) return res.status(404).json({ message: 'Riwayat donasi tidak ditemukan' });
+  if (!bolehKelolaTransaksi(req, trx)) return res.status(403).json({ message: 'Petugas hanya bisa edit riwayat yang dibuat sendiri' });
+  const nominal = Number(req.body.nominal ?? req.body.debet ?? trx.debet);
+  if (nominal <= 0) return res.status(400).json({ message: 'Nominal donasi wajib lebih dari 0' });
+  const nama = String(req.body.nama || '').trim();
+  const noRumah = String(req.body.no_rumah || '').trim();
+  if (nama && noRumah) trx.keterangan = `${nama} - No ${noRumah}`;
+  else if (req.body.keterangan) trx.keterangan = String(req.body.keterangan).trim();
+  if (req.body.tanggal) trx.tanggal = new Date(req.body.tanggal);
+  trx.debet = nominal;
+  trx.kredit = 0;
+  await trx.save();
+  await hitungUlangSaldoKas('kas_donasi');
+  await tulisAudit(req, 'UPDATE', 'Donasi', `Edit donasi ${trx._id}`);
+  res.json({ message: 'Riwayat donasi berhasil diperbarui', data: trx });
+});
+
+router.delete('/donasi/:id', requireRole('admin','petugas'), async (req, res) => {
+  const confirmText = String(req.body.confirm || req.query.confirm || '').toLowerCase();
+  if (confirmText !== 'hapus') return res.status(400).json({ message: 'Ketik hapus untuk konfirmasi' });
+  const trx = await TransaksiKas.findOne({ _id: req.params.id, sumber: 'donasi', jenis_kas: 'kas_donasi' });
+  if (!trx) return res.status(404).json({ message: 'Riwayat donasi tidak ditemukan' });
+  if (!bolehKelolaTransaksi(req, trx)) return res.status(403).json({ message: 'Petugas hanya bisa hapus riwayat yang dibuat sendiri' });
+  await trx.deleteOne();
+  await hitungUlangSaldoKas('kas_donasi');
+  await tulisAudit(req, 'DELETE', 'Donasi', `Hapus donasi ${req.params.id}`);
+  res.json({ message: 'Riwayat donasi berhasil dihapus' });
+});
+
+router.post('/dana-santunan', requireRole('admin','petugas'), upload.none(), async (req, res) => {
+  const warga = await WajibIwk.findById(req.body.warga);
+  if (!warga) return res.status(404).json({ message: 'Warga tidak ditemukan' });
+  if (warga.aktif === false) return res.status(400).json({ message: 'Warga nonaktif tidak bisa input Dana Santunan' });
+  if (warga.anggota_dana_santunan !== true) return res.status(400).json({ message: 'Warga ini bukan anggota Dana Santunan' });
+
+  const param = await getParam();
+  const nominalTotal = Number(req.body.nominal || 0);
+  const defaultNominal = Number(param.dana_santunan_bulanan || param.santunan_kematian || 0);
+  const periods = normalizeBulanList(req.body);
+  const jumlahBulan = periods.length;
+  if (!jumlahBulan) return res.status(400).json({ message: 'Pilih minimal 1 bulan Dana Santunan' });
+  if (nominalTotal <= 0) return res.status(400).json({ message: 'Nominal Dana Santunan wajib lebih dari 0' });
+  if (defaultNominal > 0 && nominalTotal < defaultNominal * jumlahBulan) return res.status(400).json({ message: `Nominal Dana Santunan minimal ${defaultNominal.toLocaleString('id-ID')} per bulan.` });
+
+  let sisa = nominalTotal;
+  const tanggalInput = req.body.tanggal ? new Date(req.body.tanggal) : new Date();
+  const rows = [];
+  for (let i = 0; i < periods.length; i++) {
+    const periode = periods[i];
+    const nominalPeriode = Math.min(sisa, defaultNominal > 0 ? defaultNominal : sisa);
+    sisa -= nominalPeriode;
+    const tanggal = new Date(periode.tahun, periode.bulan - 1, tanggalInput.getDate(), tanggalInput.getHours(), tanggalInput.getMinutes());
+    const trx = await buatTransaksiKas({
+      jenis_kas: 'santunan_kematian',
+      sumber: 'dana_santunan',
+      ref_id: warga._id,
+      keterangan: `Dana Santunan ${warga.nama} (${warga.no_rumah}) - ${bulanFull[periode.bulan - 1]} ${periode.tahun}`,
+      tanggal,
+      debet: nominalPeriode,
+      kredit: 0,
+      dibuat_oleh: req.session.user.id
+    });
+    rows.push({ ...trx.toObject(), bulan: periode.bulan, tahun: periode.tahun });
+  }
+
+  await tulisAudit(req, 'CREATE', 'Dana Santunan', `Input Dana Santunan ${warga.nama} nominal ${nominalTotal} untuk ${jumlahBulan} bulan`);
+  res.json({ message: 'Dana Santunan berhasil disimpan ke Kas Dana Santunan', jumlah_data: rows.length, data: rows });
+});
+
+router.get('/dana-santunan/riwayat', requireRole('admin','petugas'), async (req, res) => {
+  await perbaikiKasDanaSantunanLama();
+  const now = new Date();
+  const bulan = Number(req.query.bulan || now.getMonth() + 1);
+  const tahun = Number(req.query.tahun || now.getFullYear());
+  const start = new Date(tahun, bulan - 1, 1);
+  const end = new Date(tahun, bulan, 1);
+  const rows = await TransaksiKas.find({
+    jenis_kas: 'santunan_kematian',
+    sumber: 'dana_santunan',
+    tanggal: { $gte: start, $lt: end }
+  }).populate('dibuat_oleh', 'nama').sort({ tanggal: -1, createdAt: -1 }).lean();
+  res.json({ bulan, tahun, rows });
+});
+
+router.put('/dana-santunan/:id', requireRole('admin','petugas'), async (req, res) => {
+  await perbaikiKasDanaSantunanLama();
+  const trx = await TransaksiKas.findOne({ _id: req.params.id, sumber: 'dana_santunan' });
+  if (!trx) return res.status(404).json({ message: 'Riwayat Dana Santunan tidak ditemukan' });
+  if (!bolehKelolaTransaksi(req, trx)) return res.status(403).json({ message: 'Petugas hanya bisa edit riwayat yang dibuat sendiri' });
+  const nominal = Number(req.body.nominal ?? req.body.debet ?? trx.debet);
+  if (nominal <= 0) return res.status(400).json({ message: 'Nominal Dana Santunan wajib lebih dari 0' });
+  if (req.body.tanggal) trx.tanggal = new Date(req.body.tanggal);
+  if (req.body.keterangan) trx.keterangan = String(req.body.keterangan).trim();
+  trx.jenis_kas = 'santunan_kematian';
+  trx.debet = nominal;
+  trx.kredit = 0;
+  await trx.save();
+  await hitungUlangSaldoKas('kas_sosial');
+  await hitungUlangSaldoKas('santunan_kematian');
+  await tulisAudit(req, 'UPDATE', 'Dana Santunan', `Edit Dana Santunan ${trx._id}`);
+  res.json({ message: 'Riwayat Dana Santunan berhasil diperbarui', data: trx });
+});
+
+router.delete('/dana-santunan/:id', requireRole('admin','petugas'), async (req, res) => {
+  await perbaikiKasDanaSantunanLama();
+  const confirmText = String(req.body.confirm || req.query.confirm || '').toLowerCase();
+  if (confirmText !== 'hapus') return res.status(400).json({ message: 'Ketik hapus untuk konfirmasi' });
+  const trx = await TransaksiKas.findOne({ _id: req.params.id, sumber: 'dana_santunan' });
+  if (!trx) return res.status(404).json({ message: 'Riwayat Dana Santunan tidak ditemukan' });
+  if (!bolehKelolaTransaksi(req, trx)) return res.status(403).json({ message: 'Petugas hanya bisa hapus riwayat yang dibuat sendiri' });
+  await trx.deleteOne();
+  await hitungUlangSaldoKas('santunan_kematian');
+  await tulisAudit(req, 'DELETE', 'Dana Santunan', `Hapus Dana Santunan ${req.params.id}`);
+  res.json({ message: 'Riwayat Dana Santunan berhasil dihapus' });
+});
+
 
 router.put('/:id/konfirmasi-transfer', requireRole('admin','petugas'), async (req, res) => {
   const iuran = await IuranWajib.findById(req.params.id).populate('warga');
@@ -309,7 +442,7 @@ router.put('/:id/konfirmasi-transfer', requireRole('admin','petugas'), async (re
   iuran.status = 'bayar';
   iuran.catatan_petugas = String(iuran.catatan_petugas || '').replace(/^Pratinjau bukti transfer warga\.\s*/i, '').trim();
   if (!iuran.catatan_petugas) iuran.catatan_petugas = 'Transfer dikonfirmasi petugas.';
-  iuran.rincian = bagiIwk(nominal, param, iuran.warga);
+  iuran.rincian = bagiIwk(nominal, param);
   await iuran.save();
 
   await tulisAudit(req, 'UPDATE', 'Iuran IWK', `Konfirmasi pratinjau transfer ${iuran.warga?.nama || req.params.id}`);
@@ -337,7 +470,7 @@ router.put('/:id', requireRole('admin','petugas'), async (req, res) => {
     return res.status(400).json({ message: 'Catatan wajib diisi jika bayar kurang / belum bayar' });
   }
 
-  const rincianBaru = bagiIwk(nominalBaru, param, iuran.warga);
+  const rincianBaru = bagiIwk(nominalBaru, param);
   const jenisTerdampak = new Set(Object.keys(iuran.rincian?.toObject?.() || iuran.rincian || {}).concat(Object.keys(rincianBaru)));
 
   await TransaksiKas.deleteMany({ sumber: 'iwk', ref_id: iuran._id });

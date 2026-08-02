@@ -1,4 +1,4 @@
-const komponenIwk = ['uang_satpam','uang_sampah','kas_pkk','kas_rt','kas_sosial','santunan_kematian'];
+const komponenIwk = ['uang_satpam','uang_sampah','kas_pkk','kas_rt','kas_sosial'];
 
 function isAnggotaDanaSantunan(warga = {}) {
   return warga?.anggota_dana_santunan === true;
@@ -11,13 +11,11 @@ function totalIwkParameter(parameter = {}) {
   }, 0);
 }
 
-function totalIwkWarga(parameter = {}, warga = {}) {
-  const total = totalIwkParameter(parameter);
-  if (isAnggotaDanaSantunan(warga)) return total;
-  return Math.max(0, total - Number(parameter?.santunan_kematian || 0));
+function totalIwkWarga(parameter = {}) {
+  return totalIwkParameter(parameter);
 }
 
-function bagiIwk(nominalBayar, parameter, warga = {}) {
+function bagiIwk(nominalBayar, parameter) {
   let sisa = Number(nominalBayar || 0);
   const hasil = {
     uang_satpam: 0,
@@ -27,9 +25,8 @@ function bagiIwk(nominalBayar, parameter, warga = {}) {
     kas_sosial: 0,
     santunan_kematian: 0
   };
-  const urutan = Object.keys(hasil);
+  const urutan = komponenIwk;
   for (const key of urutan) {
-    if (key === 'santunan_kematian' && !isAnggotaDanaSantunan(warga)) continue;
     const value = parameter[key] ?? (key === 'kas_pkk' ? parameter.kas_rw : 0);
     const target = Number(value || 0);
     const masuk = Math.min(sisa, target);

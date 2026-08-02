@@ -4,7 +4,7 @@ const { requireRole } = require('../middleware/auth');
 const { tulisAudit } = require('../utils/audit');
 const router = express.Router();
 
-const keys = ['uang_satpam','uang_sampah','kas_pkk','kas_rt','kas_sosial','santunan_kematian'];
+const keys = ['uang_satpam','uang_sampah','kas_pkk','kas_rt','kas_sosial'];
 const publicKasKeys = ['kas_rt','kas_sosial','kas_donasi','tabungan_sampah','santunan_kematian','danus'];
 const publicIwkStatusFilters = ['bayar', 'kurang', 'belum_bayar', 'semua'];
 function boolFromBody(value, fallback = false) {
@@ -33,6 +33,8 @@ function normalizePayload(body = {}, old = {}) {
   };
   payload.jumlah_kk_iuran_rw = Number(body.jumlah_kk_iuran_rw ?? old.jumlah_kk_iuran_rw ?? 75);
   payload.iuran_ambulan_bulanan = Number(body.iuran_ambulan_bulanan ?? old.iuran_ambulan_bulanan ?? 50000);
+  payload.dana_santunan_bulanan = Number(body.dana_santunan_bulanan ?? old.dana_santunan_bulanan ?? old.santunan_kematian ?? 10000);
+  payload.santunan_kematian = Number(old.santunan_kematian ?? 0);
   payload.tampil_tunggakan_umum = body.tampil_tunggakan_umum === true || body.tampil_tunggakan_umum === 'true' || body.tampil_tunggakan_umum === 'on';
   payload.tampil_tunggakan_iwk_lama = body.tampil_tunggakan_iwk_lama === undefined
     ? !!old.tampil_tunggakan_iwk_lama
@@ -65,6 +67,7 @@ async function getParam() {
   if (!param.rekening_iwk) param.rekening_iwk = {};
   if (!param.jumlah_kk_iuran_rw) param.jumlah_kk_iuran_rw = 75;
   if (!param.iuran_ambulan_bulanan) param.iuran_ambulan_bulanan = 50000;
+  if (!param.dana_santunan_bulanan) param.dana_santunan_bulanan = Number(param.santunan_kematian || 10000);
   if (!param.public_kas_visible) param.public_kas_visible = {};
   let changedPublicKas = false;
   for (const key of publicKasKeys) {

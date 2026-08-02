@@ -5,9 +5,24 @@ const { buatTransaksiKas, hitungUlangSaldoKas, saldoSemuaKas } = require('../uti
 const { tulisAudit } = require('../utils/audit');
 const router = express.Router();
 
-router.get('/saldo', requireRole('admin','petugas','umum'), async (req, res) => res.json(await saldoSemuaKas()));
+async function perbaikiKasDanaSantunanLama() {
+  const res = await TransaksiKas.updateMany(
+    { sumber: 'dana_santunan', jenis_kas: 'kas_sosial' },
+    { $set: { jenis_kas: 'santunan_kematian' } }
+  );
+  if (res.modifiedCount > 0) {
+    await hitungUlangSaldoKas('kas_sosial');
+    await hitungUlangSaldoKas('santunan_kematian');
+  }
+}
+
+router.get('/saldo', requireRole('admin','petugas','umum'), async (req, res) => {
+  await perbaikiKasDanaSantunanLama();
+  res.json(await saldoSemuaKas());
+});
 
 router.get('/', requireRole('admin','petugas','umum'), async (req, res) => {
+  await perbaikiKasDanaSantunanLama();
   const filter = {};
   if (req.query.jenis_kas) filter.jenis_kas = req.query.jenis_kas;
   res.json(await TransaksiKas.find(filter).populate('dibuat_oleh','nama').sort({ tanggal: -1, createdAt: -1 }).limit(500));

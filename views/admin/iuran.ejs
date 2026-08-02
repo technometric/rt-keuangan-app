@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>Iuran IWK</title>
-  <link rel="stylesheet" href="/css/style.css?v=<%= assetVersion %>-v1312-dana-santunan-fix1">
+  <link rel="stylesheet" href="/css/style.css?v=<%= assetVersion %>-v1315-santunan-actions">
 </head>
 <body>
   <div class="app">
@@ -47,6 +47,7 @@
 
       <div class="tabbar payment-tabs">
         <button class="tab-btn active" type="button" data-tab="iwk" onclick="setPaymentTab('iwk')">IWK</button>
+        <button class="tab-btn" type="button" data-tab="dana_santunan" onclick="setPaymentTab('dana_santunan')">Dana Santunan</button>
         <button class="tab-btn" type="button" data-tab="donasi" onclick="setPaymentTab('donasi')">Donasi</button>
       </div>
 
@@ -59,7 +60,6 @@
                 <input class="input custom-warga-search" type="search" placeholder="Cari nama / no rumah / area" autocomplete="off">
                 <div class="custom-warga-options"></div>
               </div>
-              <span id="iwkWargaInfo" class="sub">Pilih warga untuk melihat status Dana Santunan.</span>
             </label>
             <label class="field-label">Nominal Total Bayar<input class="input" name="nominal_bayar" id="nominalBayar" type="number" placeholder="Nominal total bayar"></label>
             <label class="field-label">Metode Bayar<select class="select" name="metode_bayar"><option value="cash">Cash</option><option value="transfer">Transfer</option></select></label>
@@ -75,6 +75,33 @@
           <button class="btn">Simpan</button>
         </form>
         <p id="msg" class="sub"></p>
+      </div>
+
+      <div id="danaSantunanPaymentPanel" class="panel payment-panel hide">
+        <form id="formDanaSantunan">
+          <div class="row">
+            <label class="field-label">Warga Anggota Dana Santunan
+              <input type="hidden" name="warga" id="santunanWarga" required>
+              <div class="custom-warga-select" data-custom-warga="santunanWarga">
+                <input class="input custom-warga-search" type="search" placeholder="Cari anggota Dana Santunan" autocomplete="off">
+                <div class="custom-warga-options"></div>
+              </div>
+            </label>
+            <label class="field-label">Nominal Total<input class="input" name="nominal" id="santunanNominal" type="number" min="1" placeholder="Nominal Dana Santunan"></label>
+          </div>
+          <div class="row">
+            <label class="field-label">Tahun<input class="input" name="tahun" id="santunanTahun" type="number" placeholder="Tahun"></label>
+            <label class="field-label month-check-field">Bulan Dibayar<div id="santunanBulanChecklist" class="month-check-grid"></div></label>
+          </div>
+          <button class="btn">Simpan Dana Santunan</button>
+        </form>
+        <p id="santunanMsg" class="sub"></p>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Tanggal</th><th>Keterangan</th><th>Nominal</th><th>Petugas</th><th>Aksi</th></tr></thead>
+            <tbody id="santunanRows"></tbody>
+          </table>
+        </div>
       </div>
 
       <div id="donasiPaymentPanel" class="panel payment-panel hide">
@@ -137,7 +164,7 @@
       </div>
     </main>
   </div>
-  <script src="/js/app.js?v=<%= assetVersion %>-v1312-dana-santunan-fix1"></script>
+  <script src="/js/app.js?v=<%= assetVersion %>-v1315-santunan-actions"></script>
   <script>initPetugasIwk();initIwkLegacySetting();initTunggakanIwkForm();</script>
 </body>
 </html>

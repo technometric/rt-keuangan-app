@@ -33,6 +33,8 @@ const upload = multer({
 
 router.use(requirePublicWarga);
 
+const bulanFull = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
+
 function naturalRumah(a, b) {
   return String(a.no_rumah || '').localeCompare(String(b.no_rumah || ''), 'id', { numeric: true, sensitivity: 'base' }) || String(a.nama||'').localeCompare(String(b.nama||''), 'id');
 }
@@ -62,8 +64,10 @@ function periodeKey(bulan, tahun) {
   return `${tahun}-${String(bulan).padStart(2, '0')}`;
 }
 function periodeLabel(bulan, tahun) {
-  const nama = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
-  return `${nama[Number(bulan) - 1]} ${tahun}`;
+  return `${bulanFull[Number(bulan) - 1]} ${tahun}`;
+}
+function normalizeRumah(value = '') {
+  return String(value).toLowerCase().replace(/\bno\b/g, '').replace(/[^a-z0-9]/g, '');
 }
 function onlyDigits(value = '') {
   return String(value || '').replace(/\D/g, '');
@@ -287,7 +291,7 @@ router.post('/bukti-iwk', upload.single('foto_bukti'), async (req, res) => {
       grup_pembayaran: `bukti-${bukti._id}`,
       bulan_ke: 1,
       total_bulan: 1,
-      rincian: bagiIwk(nominalTransfer, param || {}, warga)
+      rincian: bagiIwk(nominalTransfer, param || {})
     });
     bukti.iuran_wajib = iuran._id;
     await bukti.save();
@@ -396,10 +400,74 @@ router.get('/iwk-status-cards', async (req, res) => {
     periode: periodeLabel(bulan, tahun),
     cutoff,
     tampil_tunggakan_lama: tampilTunggakanLama,
+    tampil_bukti_transfer: param?.tampil_foto_iwk_input !== false,
     public_iwk_status_filter: statusFilter,
     previous_range: periods.length > 1 ? `${periodeLabel(periods[1].bulan, periods[1].tahun)} - ${periodeLabel(periods[periods.length - 1].bulan, periods[periods.length - 1].tahun)}` : '',
     data
   });
+});
+
+router.get('/kartu-iuran', requirePublicWarga, async (req, res) => {
+  const tahun = Number(req.query.tahun || new Date().getFullYear());
+  const wargaId = req.session.publicWarga?.id;
+  const param = await ParameterIwk.findOne({ aktif: true }).sort({ createdAt: -1 }).lean();
+  const cutoff = cutoffPeriod(param || {});
+  const warga = await WajibIwk.findOne({ _id: wargaId, aktif: { $ne: false } }).lean();
+  if (!warga) return res.status(404).json({ message: 'Warga tidak ditemukan / nonaktif' });
+
+  const iuran = await IuranWajib.find({ warga: warga._id, tahun }).lean();
+  const iwkMap = new Map();
+  for (const item of iuran) {
+    const existing = iwkMap.get(item.bulan);
+    if (!existing || Number(item.nominal_bayar || 0) > Number(existing.nominal_bayar || 0)) iwkMap.set(item.bulan, item);
+  }
+
+  const start = new Date(tahun, 0, 1);
+  const end = new Date(tahun + 1, 0, 1);
+  const santunanRows = await TransaksiKas.find({
+    jenis_kas: 'santunan_kematian',
+    sumber: 'dana_santunan',
+    ref_id: warga._id,
+    tanggal: { $gte: start, $lt: end }
+  }).lean();
+  const santunanPaid = new Set(santunanRows.filter(x => Number(x.debet || 0) > 0).map(x => new Date(x.tanggal).getMonth() + 1));
+
+  const noRumahNorm = normalizeRumah(warga.no_rumah);
+  const donasiRows = await TransaksiKas.find({
+    jenis_kas: 'kas_donasi',
+    sumber: 'donasi',
+    tanggal: { $gte: start, $lt: end }
+  }).lean();
+  const donasiMap = new Map();
+  for (const row of donasiRows) {
+    if (!noRumahNorm || !normalizeRumah(row.keterangan || '').includes(noRumahNorm)) continue;
+    const bulan = new Date(row.tanggal).getMonth() + 1;
+    donasiMap.set(bulan, Number(donasiMap.get(bulan) || 0) + Number(row.debet || 0));
+  }
+
+  const rows = Array.from({ length: 12 }, (_, i) => {
+    const bulan = i + 1;
+    if (periodValue(bulan, tahun) < periodValue(cutoff.bulan, cutoff.tahun)) {
+      return {
+        bulan,
+        label: bulanFull[bulan - 1],
+        iwk: '',
+        dana_santunan: '',
+        donasi: 0
+      };
+    }
+    const item = iwkMap.get(bulan);
+    const status = item ? normalizeStatus(item.status) : 'belum_bayar';
+    return {
+      bulan,
+      label: bulanFull[bulan - 1],
+      iwk: status === 'bayar' || status === 'pratinjau' ? 'Bayar' : status === 'kurang' ? 'Kurang' : 'Belum Bayar',
+      dana_santunan: santunanPaid.has(bulan) ? 'Bayar' : 'Belum Bayar',
+      donasi: Number(donasiMap.get(bulan) || 0)
+    };
+  });
+
+  res.json({ tahun, cutoff, warga, rows });
 });
 
 

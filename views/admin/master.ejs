@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>Master Data</title>
-  <link rel="stylesheet" href="/css/style.css?v=<%= assetVersion %>-v1312-dana-santunan-fix1">
+  <link rel="stylesheet" href="/css/style.css?v=<%= assetVersion %>-v1315-santunan-actions">
 </head>
 <body>
   <div class="app">
@@ -24,7 +24,6 @@
           <div class="row">
             <label class="field-label">Kas RT<input class="input" name="kas_rt" type="number" placeholder="Kas RT"></label>
             <label class="field-label">Kas Sosial<input class="input" name="kas_sosial" type="number" placeholder="Kas Sosial"></label>
-            <label class="field-label">Dana Santunan<input class="input" name="santunan_kematian" type="number" placeholder="Dana Santunan"></label>
           </div>
           <div class="row">
             <label class="field-label">Minimal Nominal IWK<input class="input" name="minimal_nominal_iwk" type="number" min="0" placeholder="17000"></label>
@@ -34,6 +33,12 @@
           <div class="row">
             <label class="field-label">Jumlah KK Iuran RW<input class="input" name="jumlah_kk_iuran_rw" type="number" min="0" placeholder="75"></label>
             <label class="field-label">Iuran Ambulan Bulanan<input class="input" name="iuran_ambulan_bulanan" type="number" min="0" placeholder="50000"></label>
+          </div>
+          <div class="nested-setting-panel">
+            <h3>Parameter Dana Santunan</h3>
+            <div class="row">
+              <label class="field-label">Dana Santunan Bulanan<input class="input" name="dana_santunan_bulanan" type="number" min="0" placeholder="10000"></label>
+            </div>
           </div>
           <div class="nested-setting-panel">
             <h3>Rekening Transfer IWK</h3>
@@ -73,7 +78,7 @@
         <h2>Riwayat Parameter IWK</h2>
         <div class="table-scroll">
           <table>
-            <thead><tr><th>Tanggal</th><th>Total</th><th>Satpam</th><th>Sampah</th><th>Kas PKK</th><th>Kas RT</th><th>Sosial</th><th>Dana Santunan</th><th>KK RW</th><th>Tunggakan Umum</th><th>Kas Umum</th><th>Status</th></tr></thead>
+            <thead><tr><th>Tanggal</th><th>Total IWK</th><th>Satpam</th><th>Sampah</th><th>Kas PKK</th><th>Kas RT</th><th>Sosial</th><th>Dana Santunan</th><th>KK RW</th><th>Tunggakan Umum</th><th>Kas Umum</th><th>Status</th></tr></thead>
             <tbody id="parameterRows"></tbody>
           </table>
         </div>
@@ -111,7 +116,7 @@
       </div>
     </main>
   </div>
-  <script src="/js/app.js?v=<%= assetVersion %>-v1312-dana-santunan-fix1"></script>
+  <script src="/js/app.js?v=<%= assetVersion %>-v1315-santunan-actions"></script>
   <script>initMaster()</script>
 </body>
 </html>

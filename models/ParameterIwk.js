@@ -8,6 +8,7 @@ const ParameterIwkSchema = new mongoose.Schema({
   kas_rt: { type: Number, default: 5000 },
   kas_sosial: { type: Number, default: 3000 },
   santunan_kematian: { type: Number, default: 3000 },
+  dana_santunan_bulanan: { type: Number, default: 10000 },
   total_iwk: { type: Number, default: 30000 },
   minimal_nominal_iwk: { type: Number, default: 17000 },
   iwk_cutoff_bulan: { type: Number, default: 7 },
