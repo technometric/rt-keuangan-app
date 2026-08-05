@@ -58,3 +58,8 @@ dan akan ada laporan bulanan pemasukan iwk format pdf yg bisa d export untuk d s
 Patch v1.3.4
 1. saya ingin handle cache browser kalau ada update baru berdasarkan versi
 2. saya ingin setiap masuk halaman wajib login dulu jangan lsg masuk d semua portal umum, petugas atw admin
+
+Patch v1.3.19 - Konsistensi total IWK menu vs print PDF
+1. Menu "Pendapatan IWK Bulan Lalu" (admin) sekarang menampilkan detail lengkap: Total warga, Bayar (Rp), Kurang (Rp), Belum bayar (merah), dan Total — konsisten dengan hasil print PDF.
+2. Print PDF status IWK menambahkan nominal pada "Kurang: 2 warga (Rp 30.000)" dan baris "Total" yang sama dengan angka di menu.
+3. Tulisan "Belum bayar" di menu dan PDF dibuat merah; status di tabel PDF diberi warna (Bayar hijau, Kurang oranye, Belum bayar merah).

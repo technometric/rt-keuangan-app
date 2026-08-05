@@ -190,6 +190,145 @@ router.get('/laporan-bulanan/pdf', requireRole('admin'), async (req, res) => {
   doc.end();
 });
 
+router.get('/status-pendapatan', requireRole('admin'), async (req, res) => {
+  const now = new Date();
+  const bulan = Number(req.query.bulan || now.getMonth() + 1);
+  const tahun = Number(req.query.tahun || now.getFullYear());
+  const param = await getParam();
+  const totalIwk = Number(param.total_iwk || 0) || totalIwkWarga(param);
+  const batasStatusBayar = batasStatusBayarIwk(param);
+  const wargaAktif = await WajibIwk.find({ aktif: { $ne: false } }).lean();
+  const totalWarga = wargaAktif.length;
+  const agg = await IuranWajib.aggregate([
+    { $match: { bulan, tahun } },
+    { $group: { _id: null, pendapatan: { $sum: '$nominal_bayar' }, jumlahBayar: { $sum: { $cond: [{ $gt: ['$nominal_bayar', 0] }, 1, 0] } } } }
+  ]);
+  const pendapatan = Number(agg[0]?.pendapatan || 0);
+  const jumlahBayar = Number(agg[0]?.jumlahBayar || 0);
+  const iuran = await IuranWajib.find({ bulan, tahun }).lean();
+  const statusMap = new Map();
+  for (const item of iuran) {
+    const id = String(item.warga || '');
+    const existing = statusMap.get(id);
+    if (!existing || Number(item.nominal_bayar || 0) > Number(existing.nominal_bayar || 0)) statusMap.set(id, item);
+  }
+  const bayarWarga = [];
+  const kurangWarga = [];
+  let belumWarga = 0;
+  for (const w of wargaAktif) {
+    const item = statusMap.get(String(w._id));
+    const nominal = Number(item?.nominal_bayar || 0);
+    const status = item ? statusIwk(nominal, batasStatusBayar) : 'belum_bayar';
+    if (status === 'bayar') bayarWarga.push(nominal);
+    else if (status === 'kurang') kurangWarga.push(nominal);
+    else belumWarga += 1;
+  }
+  const target = wargaAktif.reduce((sum, warga) => sum + totalIwkWarga(param, warga), 0);
+  const persen = target > 0 ? Math.round((pendapatan / target) * 100) : 0;
+  res.json({
+    bulan, tahun, periode: `${bulanFull[bulan - 1]} ${tahun}`,
+    total_iwk: totalIwk, total_warga: totalWarga, jumlah_bayar: jumlahBayar,
+    pendapatan, target, persen,
+    bayar_warga: bayarWarga.length, bayar_total: bayarWarga.reduce((s, n) => s + n, 0),
+    kurang_warga: kurangWarga.length, kurang_total: kurangWarga.reduce((s, n) => s + n, 0),
+    belum_warga: belumWarga
+  });
+});
+
+router.get('/status-bulanan/pdf', requireRole('admin'), async (req, res) => {
+  const now = new Date();
+  const bulan = Number(req.query.bulan || now.getMonth());
+  const tahun = Number(req.query.tahun || now.getFullYear());
+  const param = await getParam();
+  const batasStatusBayar = batasStatusBayarIwk(param);
+  const warga = await WajibIwk.find({ aktif: { $ne: false } }).lean();
+  warga.sort((a, b) =>
+    String(a.no_rumah || '').localeCompare(String(b.no_rumah || ''), 'id', { numeric: true, sensitivity: 'base' }) ||
+    String(a.nama || '').localeCompare(String(b.nama || ''), 'id', { sensitivity: 'base' })
+  );
+  const iuran = await IuranWajib.find({ bulan, tahun }).lean();
+  const statusMap = new Map();
+  for (const item of iuran) {
+    const id = String(item.warga || '');
+    const existing = statusMap.get(id);
+    if (!existing || Number(item.nominal_bayar || 0) > Number(existing.nominal_bayar || 0)) statusMap.set(id, item);
+  }
+  const rows = warga.map(w => {
+    const item = statusMap.get(String(w._id));
+    const nominal = Number(item?.nominal_bayar || 0);
+    return { warga: w, nominal, status: item ? statusIwk(nominal, batasStatusBayar) : 'belum_bayar' };
+  });
+  const bayar = rows.filter(r => r.status === 'bayar');
+  const kurang = rows.filter(r => r.status === 'kurang');
+  const belum = rows.filter(r => r.status === 'belum_bayar');
+  const totalBayar = bayar.reduce((sum, r) => sum + r.nominal, 0);
+  const totalKurang = kurang.reduce((sum, r) => sum + r.nominal, 0);
+  const totalSemua = iuran.reduce((sum, r) => sum + Number(r.nominal_bayar || 0), 0);
+  const periode = `${bulanFull[bulan - 1]} ${tahun}`;
+
+  res.setHeader('Content-Type', 'application/pdf');
+  res.setHeader('Content-Disposition', `attachment; filename="status-iwk-${bulan}-${tahun}.pdf"`);
+  const doc = new PDFDocument({ margin: 36, size: 'A4' });
+  doc.pipe(res);
+  doc.font('Helvetica-Bold').fontSize(18).text('Laporan Status IWK Warga', { align: 'center' });
+  doc.font('Helvetica').fontSize(11).text(`Periode: ${periode}`, { align: 'center' });
+  doc.moveDown();
+  doc.font('Helvetica-Bold').fontSize(12).text(`Total warga: ${rows.length}`);
+  doc.font('Helvetica').fontSize(10)
+    .text(`Bayar: ${bayar.length} warga (${rp(totalBayar)})`)
+    .text(`Kurang: ${kurang.length} warga (${rp(totalKurang)})`);
+  doc.fillColor('#dc2626').text(`Belum bayar: ${belum.length} warga`);
+  doc.fillColor('#0f172a').font('Helvetica-Bold').text(`Total: ${rp(totalSemua)}`);
+  doc.moveDown();
+
+  const tableX = 36;
+  const widths = [40, 150, 70, 60, 70, 90];
+  const rowHeight = 22;
+  const headerHeight = 20;
+  const pageBottom = 790;
+  let y = doc.y;
+  const fitText = (value, width) => {
+    let text = String(value || '-');
+    const maxWidth = width - 8;
+    while (text.length > 3 && doc.widthOfString(text) > maxWidth) text = text.slice(0, -2);
+    return text.length < String(value || '-').length ? text.slice(0, -3) + '...' : text;
+  };
+  const drawHeader = () => {
+    let x = tableX;
+    doc.rect(tableX, y, widths.reduce((a, b) => a + b, 0), headerHeight).fill('#f1f5f9');
+    doc.font('Helvetica-Bold').fontSize(8).fillColor('#0f172a');
+    ['No','Warga','No Rumah','Area','Status','Nominal'].forEach((text, i) => {
+      doc.text(text, x + 4, y + 6, { width: widths[i] - 8, height: 10 });
+      x += widths[i];
+    });
+    doc.rect(tableX, y, widths.reduce((a, b) => a + b, 0), headerHeight).strokeColor('#cbd5e1').lineWidth(0.6).stroke();
+    y += headerHeight;
+  };
+  const addPageIfNeeded = () => {
+    if (y + rowHeight <= pageBottom) return;
+    doc.addPage();
+    y = 36;
+    drawHeader();
+  };
+  const statusLabel = s => s === 'bayar' ? 'Bayar' : s === 'kurang' ? 'Kurang' : 'Belum Bayar';
+  const statusColor = s => s === 'bayar' ? '#15803d' : s === 'kurang' ? '#b45309' : '#b91c1c';
+  drawHeader();
+  rows.forEach((row, idx) => {
+    addPageIfNeeded();
+    doc.font('Helvetica').fontSize(8);
+    let x = tableX;
+    doc.rect(tableX, y, widths.reduce((a, b) => a + b, 0), rowHeight).strokeColor('#e2e8f0').lineWidth(0.45).stroke();
+    const values = [idx + 1, row.warga.nama, row.warga.no_rumah, row.warga.area || '-', statusLabel(row.status), rp(row.nominal)];
+    values.forEach((value, i) => {
+      doc.fillColor(i === 4 ? statusColor(row.status) : '#334155');
+      doc.text(fitText(value, widths[i]), x + 4, y + 6, { width: widths[i] - 8, height: 10, align: i === 5 ? 'right' : 'left' });
+      x += widths[i];
+    });
+    y += rowHeight;
+  });
+  doc.end();
+});
+
 router.get('/tunggakan-lama', requireRole('admin'), async (req, res) => {
   const periods = await legacyPeriods();
   const wargaId = req.query.warga;

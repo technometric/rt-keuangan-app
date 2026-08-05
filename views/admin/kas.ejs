@@ -43,6 +43,48 @@
         </form>
       </div>
       <div class="panel">
+        <h2>Import Transaksi Kas dari CSV</h2>
+        <form id="formKasImportCsv">
+          <div class="row">
+            <select class="select" name="jenis_kas">
+              <option value="kas_rt">Kas RT</option>
+              <option value="kas_sosial">Kas Sosial</option>
+              <option value="kas_donasi">Kas Donasi</option>
+              <option value="tabungan_sampah">Tabungan Sampah</option>
+              <option value="danus">Danus</option>
+              <option value="uang_satpam">Uang Satpam</option>
+              <option value="uang_sampah">Uang Sampah</option>
+              <option value="kas_pkk">Kas PKK</option>
+              <option value="santunan_kematian">Dana Santunan</option>
+            </select>
+            <select class="select" name="tipe">
+              <option value="kredit">Kredit / Uang Keluar</option>
+              <option value="debet">Debet / Uang Masuk</option>
+            </select>
+            <input class="input" name="tanggal" type="date" required>
+            <input class="input" type="file" name="file" accept=".csv,text/csv" required>
+          </div>
+          <p class="sub">Format CSV: <strong>No,Uraian,Jumlah</strong> atau <strong>Uraian,Jumlah</strong> (baris header opsional). Koma hanya pemisah kolom — uraian tidak boleh mengandung koma, baris yang mengandung koma ekstra akan ditolak. Pemisah koma atau titik koma dideteksi otomatis.</p>
+          <div class="actions">
+            <button class="btn" type="submit">Import CSV</button>
+          </div>
+        </form>
+        <p id="kasImportMsg" class="sub"></p>
+      </div>
+
+      <div class="panel">
+        <h2>Total Pengeluaran / Pemasukan Periode</h2>
+        <div class="row">
+          <label class="field-label">Tanggal Dari<input class="input" id="kasDari" type="date"></label>
+          <label class="field-label">Tanggal Sampai<input class="input" id="kasSampai" type="date"></label>
+        </div>
+        <div class="actions">
+          <button class="btn" type="button" onclick="loadKasTotalPeriode()">Hitung Total</button>
+        </div>
+        <div id="kasTotalPeriode" class="summary-grid"></div>
+      </div>
+
+      <div class="panel">
         <div class="table-scroll">
           <table>
             <thead><tr><th>Tanggal</th><th>Jenis</th><th>Keterangan</th><th>Debet</th><th>Kredit</th><th>Saldo</th><th>Aksi</th></tr></thead>

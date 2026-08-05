@@ -27,7 +27,18 @@ async function hitungUlangSaldoKas(jenis_kas) {
 async function saldoSemuaKas() {
   const jenisList = ['uang_satpam','uang_sampah','kas_pkk','kas_rw','kas_rt','kas_sosial','santunan_kematian','kas_donasi','tabungan_sampah','danus'];
   const result = {};
-  for (const jenis of jenisList) result[jenis] = await saldoTerakhir(jenis);
+  for (const jenis of jenisList) {
+    let saldo = await saldoTerakhir(jenis);
+    const agg = await TransaksiKas.aggregate([
+      { $match: { jenis_kas: jenis } },
+      { $group: { _id: null, total: { $sum: { $subtract: ['$debet', '$kredit'] } } } }
+    ]);
+    const computed = Number(agg[0]?.total || 0);
+    if (computed !== saldo) {
+      saldo = await hitungUlangSaldoKas(jenis);
+    }
+    result[jenis] = saldo;
+  }
   return result;
 }
 

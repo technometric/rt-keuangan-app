@@ -37,12 +37,21 @@ function isPaymentFormWarga(selectId){
   const el = document.getElementById(selectId);
   return !!(el && el.closest && el.closest('#formIwk'));
 }
+function selectedPaymentPeriod(){
+  const checklist = document.getElementById('bulanChecklist');
+  let months = checklist ? checkedIwkMonths() : [];
+  if(!months.length) months = [new Date().getMonth() + 1];
+  const tahun = Number(document.getElementById('tahunMulai')?.value || new Date().getFullYear());
+  return { tahun, months: [...new Set(months)] };
+}
 async function filterWargaBelumBayarBulanBerjalan(data, selectId){
   if(!isPaymentFormWarga(selectId)) return data;
-  const now = new Date();
-  const rows = await api(`/api/iuran-wajib?bulan=${now.getMonth()+1}&tahun=${now.getFullYear()}`);
-  const paid = new Set(rows.filter(x => ['bayar','pratinjau'].includes(normStatus(x.status))).map(x => String(x.warga?._id || x.warga || '')));
-  return data.filter(w => !paid.has(String(w._id)));
+  const { tahun, months } = selectedPaymentPeriod();
+  const paid = new Set();
+  await Promise.all(months.map(m => api(`/api/iuran-wajib?bulan=${m}&tahun=${tahun}`).then(rows => {
+    rows.filter(x => ['bayar','pratinjau'].includes(normStatus(x.status))).forEach(x => paid.add(`${String(x.warga?._id || x.warga || '')}:${m}`));
+  }).catch(() => {})));
+  return data.filter(w => months.some(m => !paid.has(`${String(w._id)}:${m}`)));
 }
 
 function labelStatus(s){
@@ -260,6 +269,64 @@ async function loadIwkProgress(targetId = 'iwkProgressCard') {
     <div class="progress-bar"><i style="width:${Math.min(100, Number(data.persen||0))}%"></i></div>
     <div class="progress-note">${data.jumlah_bayar} warga sudah bayar · Target ${data.persen}%</div>
   `;
+}
+
+async function loadIwkProgressPeriode(targetId, bulan, tahun, label){
+  const el = document.getElementById(targetId);
+  if(!el) return;
+  const data = await api(`/api/iuran-wajib/status-pendapatan?bulan=${bulan}&tahun=${tahun}`);
+  const rumus = `${rupiah(data.pendapatan)} / (${rupiah(data.total_iwk)} × ${data.total_warga})`;
+  el.innerHTML = `
+    <div class="progress-title">Pendapatan IWK ${esc(label)}</div>
+    <div class="progress-money">${rupiah(data.pendapatan)} <span>/ ${rupiah(data.target)}</span></div>
+    <div class="progress-note">${rumus}</div>
+    <div class="progress-bar"><i style="width:${Math.min(100, Number(data.persen||0))}%"></i></div>
+    <div class="progress-note">Total warga: ${data.total_warga} · Bayar: ${data.bayar_warga} warga (${rupiah(data.bayar_total)}) · Kurang: ${data.kurang_warga} warga (${rupiah(data.kurang_total)})</div>
+    <div class="progress-note"><span class="danger-text">Belum bayar: ${data.belum_warga} warga</span> · Total: ${rupiah(data.pendapatan)}</div>
+  `;
+}
+
+function setupIwkStatusBulanLalu(){
+  const bulanEl = document.getElementById('iwkStatusBulanLalu');
+  const tahunEl = document.getElementById('iwkStatusTahunLalu');
+  if(!bulanEl || !tahunEl) return;
+  const prev = new Date();
+  prev.setDate(1);
+  prev.setMonth(prev.getMonth() - 1);
+  if(!bulanEl.innerHTML.trim()){
+    bulanEl.innerHTML = bulanNama.map((b,i)=>`<option value="${i+1}">${b}</option>`).join('');
+    bulanEl.value = String(prev.getMonth() + 1);
+    bulanEl.addEventListener('change', loadIwkProgressBulanSebelumnya);
+  }
+  if(!tahunEl.value){
+    tahunEl.value = String(prev.getFullYear());
+    tahunEl.addEventListener('input', loadIwkProgressBulanSebelumnya);
+  }
+}
+
+async function loadIwkProgressBulanSebelumnya(){
+  const bulanEl = document.getElementById('iwkStatusBulanLalu');
+  const tahunEl = document.getElementById('iwkStatusTahunLalu');
+  const prev = new Date();
+  prev.setDate(1);
+  prev.setMonth(prev.getMonth() - 1);
+  if(!bulanEl || !tahunEl) {
+    await loadIwkProgressPeriode('iwkProgressBulanSebelumnya', prev.getMonth() + 1, prev.getFullYear(), `${bulanNama[prev.getMonth()]} ${prev.getFullYear()}`);
+    return;
+  }
+  const bulan = Number(bulanEl.value || prev.getMonth() + 1);
+  const tahun = Number(tahunEl.value || prev.getFullYear());
+  await loadIwkProgressPeriode('iwkProgressBulanSebelumnya', bulan, tahun, `${bulanNama[bulan - 1]} ${tahun}`);
+}
+
+function printIwkStatusBulananPdf(){
+  const bulan = document.getElementById('iwkStatusBulanLalu')?.value || '';
+  const tahun = document.getElementById('iwkStatusTahunLalu')?.value || new Date().getFullYear();
+  if(!bulan) {
+    alert('Pilih bulan terlebih dahulu untuk cetak PDF.');
+    return;
+  }
+  location.href = `/api/iuran-wajib/status-bulanan/pdf?bulan=${bulan}&tahun=${tahun}`;
 }
 
 async function loadWarga(selectId = 'warga') {
@@ -557,13 +624,44 @@ function setupBulanMulai(){
     checklist.querySelectorAll('input').forEach(input => input.addEventListener('change', () => {
       input.closest('.month-check')?.classList.toggle('active', input.checked);
       updateNominalForCheckedMonths();
+      scheduleWargaReload();
+      syncRiwayatToPaymentPeriod();
     }));
     updateNominalForCheckedMonths();
-    return;
+  }
+  if(tahun && !tahun.dataset.periodBound){
+    tahun.dataset.periodBound = 'true';
+    tahun.addEventListener('input', () => {
+      scheduleWargaReload();
+      syncRiwayatToPaymentPeriod();
+    });
   }
   if(!bulan || !tahun) return;
   bulan.innerHTML = bulanNama.map((b,i)=>`<option value="${i+1}">${b}</option>`).join('');
   bulan.value = now.getMonth() + 1;
+}
+
+let wargaReloadTimer = null;
+function scheduleWargaReload(){
+  clearTimeout(wargaReloadTimer);
+  wargaReloadTimer = setTimeout(() => loadWarga().catch(() => {}), 250);
+}
+
+function syncRiwayatToPaymentPeriod(){
+  const checklist = document.getElementById('bulanChecklist');
+  const tahunInput = document.getElementById('tahunMulai');
+  const riwayatBulan = document.getElementById('riwayatBulan');
+  const riwayatTahun = document.getElementById('riwayatTahun');
+  const months = checklist ? checkedIwkMonths() : [];
+  let changed = false;
+  if(riwayatBulan && months.length){
+    const first = String(months[0]);
+    if(String(riwayatBulan.value) !== first) { riwayatBulan.value = first; changed = true; }
+  }
+  if(riwayatTahun && tahunInput && tahunInput.value){
+    if(String(riwayatTahun.value) !== String(tahunInput.value)) { riwayatTahun.value = tahunInput.value; changed = true; }
+  }
+  if(changed) loadIwk();
 }
 
 function checkedMonthCount(){
@@ -905,7 +1003,57 @@ async function initKas() {
     resetKasForm();
     await loadKasRows();
   });
+  bindKasImportCsv();
+  setupKasTotalPeriode();
   await loadKasRows();
+}
+
+async function bindKasImportCsv() {
+  const form = document.getElementById('formKasImportCsv');
+  if(!form || form.dataset.bound) return;
+  form.dataset.bound = 'true';
+  const tanggal = form.elements.tanggal;
+  if(tanggal && !tanggal.value) tanggal.value = new Date().toISOString().slice(0,10);
+  form.addEventListener('submit', async e => {
+    e.preventDefault();
+    const msg = document.getElementById('kasImportMsg');
+    if(msg) msg.textContent = 'Mengimport CSV...';
+    try{
+      const result = await fetch('/api/kas/import-csv', { method: 'POST', body: new FormData(form) }).then(async r => { const d = await r.json(); if(!r.ok) throw new Error(d.message); return d; });
+      form.reset();
+      if(tanggal) tanggal.value = new Date().toISOString().slice(0,10);
+      if(msg) msg.textContent = `${result.message}.${result.errors?.length ? ' Baris gagal: ' + result.errors.join('; ') : ''}`;
+      await loadKasRows();
+    }catch(err){
+      if(msg) msg.textContent = err.message;
+    }
+  });
+}
+
+function setupKasTotalPeriode() {
+  const dari = document.getElementById('kasDari');
+  const sampai = document.getElementById('kasSampai');
+  if(!dari || !sampai) return;
+  const today = new Date().toISOString().slice(0,10);
+  if(!dari.value) dari.value = today;
+  if(!sampai.value) sampai.value = today;
+}
+
+async function loadKasTotalPeriode() {
+  const dari = document.getElementById('kasDari')?.value;
+  const sampai = document.getElementById('kasSampai')?.value;
+  const el = document.getElementById('kasTotalPeriode');
+  if(!dari || !sampai || !el) return;
+  try{
+    const data = await api(`/api/kas/total-periode?dari=${dari}&sampai=${sampai}`);
+    el.innerHTML = `
+      <div class="summary-mini income"><span>Total Pengeluaran</span><strong>${rupiah(data.total_pengeluaran)}</strong></div>
+      <div class="summary-mini"><span>Total Pemasukan</span><strong>${rupiah(data.total_pemasukan)}</strong></div>
+      <div class="summary-mini"><span>Jumlah Transaksi</span><strong>${Number(data.jumlah_pengeluaran || 0).toLocaleString('id-ID')} keluar · ${Number(data.jumlah_pemasukan || 0).toLocaleString('id-ID')} masuk</strong></div>
+    `;
+  }catch(err){
+    el.innerHTML = `<div class="summary-mini"><span>Keterangan</span><strong>${esc(err.message)}</strong></div>`;
+  }
 }
 
 async function loadKasRows() {

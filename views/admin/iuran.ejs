@@ -120,6 +120,25 @@
       </div>
 
       <div class="panel">
+        <div class="table-toolbar">
+          <div>
+            <h2>Pendapatan IWK Bulan Lalu</h2>
+            <p class="sub">Pilih bulan untuk melihat status pendapatan dan cetak status warga per bulan.</p>
+          </div>
+          <div class="toolbar-actions">
+            <label class="field-label compact-field">Bulan
+              <select id="iwkStatusBulanLalu" class="select mini-select"></select>
+            </label>
+            <label class="field-label compact-field">Tahun
+              <input id="iwkStatusTahunLalu" class="input mini-input" type="number">
+            </label>
+            <button class="btn orange" type="button" onclick="printIwkStatusBulananPdf()">Print PDF</button>
+          </div>
+        </div>
+        <div id="iwkProgressBulanSebelumnya" class="iwk-progress-card admin-progress"></div>
+      </div>
+
+      <div class="panel">
         <h2>Tunggakan IWK 12 Bulan Sebelumnya</h2>
         <form id="formTunggakanIwk">
           <div class="row">
@@ -164,7 +183,7 @@
       </div>
     </main>
   </div>
-  <script src="/js/app.js?v=<%= assetVersion %>-v1315-santunan-actions"></script>
-  <script>initPetugasIwk();initIwkLegacySetting();initTunggakanIwkForm();</script>
+  <script src="/js/app.js?v=<%= assetVersion %>-v1319-iwk-detail-total"></script>
+  <script>initPetugasIwk();initIwkLegacySetting();initTunggakanIwkForm();setupIwkStatusBulanLalu();loadIwkProgressBulanSebelumnya();</script>
 </body>
 </html>
