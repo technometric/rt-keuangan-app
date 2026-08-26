@@ -34,6 +34,9 @@ function tambahBulan(bulan, tahun, offset) {
 function periodValue(bulan, tahun) {
   return Number(tahun) * 12 + Number(bulan);
 }
+function periodeKey(bulan, tahun) {
+  return `${Number(tahun)}-${String(Number(bulan)).padStart(2, '0')}`;
+}
 const bulanFull = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
 function rp(n){ return 'Rp ' + Number(n || 0).toLocaleString('id-ID'); }
 
@@ -136,7 +139,7 @@ router.get('/laporan-bulanan/pdf', requireRole('admin'), async (req, res) => {
   doc.moveDown();
 
   const tableX = 36;
-  const widths = [62, 146, 58, 86, 64, 84];
+  const widths = [28, 58, 136, 54, 82, 62, 76];
   const rowHeight = 24;
   const headerHeight = 22;
   const pageBottom = 790;
@@ -152,7 +155,7 @@ router.get('/laporan-bulanan/pdf', requireRole('admin'), async (req, res) => {
     let x = tableX;
     doc.rect(tableX, y, widths.reduce((a,b)=>a+b,0), headerHeight).fill('#f1f5f9');
     doc.font('Helvetica-Bold').fontSize(8).fillColor('#0f172a');
-    ['Tanggal','Warga','Rumah','Petugas','Status','Nominal'].forEach((text, i) => {
+    ['No','Tanggal','Warga','Rumah','Petugas','Status','Nominal'].forEach((text, i) => {
       doc.text(text, x + 4, y + 7, { width: widths[i] - 8, height: 10 });
       x += widths[i];
     });
@@ -171,7 +174,7 @@ router.get('/laporan-bulanan/pdf', requireRole('admin'), async (req, res) => {
     doc.rect(tableX, y, widths.reduce((a,b)=>a+b,0), rowHeight).strokeColor('#e2e8f0').lineWidth(0.45).stroke();
     doc.font('Helvetica').fontSize(8).fillColor('#334155');
     arr.forEach((value, i) => {
-      const align = i === 5 ? 'right' : 'left';
+      const align = i === 6 ? 'right' : 'left';
       doc.text(fitText(value, widths[i]), x + 4, y + 7, { width: widths[i] - 8, height: 10, align });
       x += widths[i];
     });
@@ -179,7 +182,8 @@ router.get('/laporan-bulanan/pdf', requireRole('admin'), async (req, res) => {
   };
 
   drawHeader();
-  rows.forEach(row => drawRow([
+  rows.forEach((row, idx) => drawRow([
+    idx + 1,
     new Date(row.tanggal).toLocaleDateString('id-ID'),
     row.warga?.nama || '-',
     row.warga?.no_rumah || '-',
@@ -370,8 +374,25 @@ router.post('/', requireRole('admin','petugas'), upload.single('foto_bayar'), as
   const batasStatusBayar = batasStatusBayarIwk(param);
   const metode = req.body.metode_bayar || 'cash';
   const periods = normalizeBulanList(req.body);
-  const jumlahBulan = periods.length;
+  const requestedPeriods = [...new Map(periods.map(p => [periodeKey(p.bulan, p.tahun), p])).values()];
   const tanggalInput = req.body.tanggal ? new Date(req.body.tanggal) : new Date();
+  const existing = await IuranWajib.find({
+    warga: warga._id,
+    $or: requestedPeriods.map(p => ({ bulan: p.bulan, tahun: p.tahun }))
+  }).select('bulan tahun').lean();
+  const existingKeys = new Set(existing.map(x => periodeKey(x.bulan, x.tahun)));
+  const targetPeriods = requestedPeriods.filter(p => !existingKeys.has(periodeKey(p.bulan, p.tahun)));
+  const skippedPeriods = requestedPeriods.filter(p => existingKeys.has(periodeKey(p.bulan, p.tahun)));
+  const jumlahBulan = targetPeriods.length;
+
+  if (!jumlahBulan) {
+    return res.json({
+      message: 'Pembayaran sudah pernah dicatat untuk periode yang dipilih, jadi tidak disimpan ulang.',
+      jumlah_data: 0,
+      jumlah_diabaikan: skippedPeriods.length,
+      data: []
+    });
+  }
 
   if (metode === 'cash' && param.wajib_foto_cash && param.tampil_foto_iwk_input !== false && !req.file) return res.status(400).json({ message: 'Foto cash wajib diupload' });
   if (nominalTotal < (minimalIwk * jumlahBulan)) return res.status(400).json({ message: `Minimal bayar IWK adalah ${minimalIwk.toLocaleString('id-ID')} per bulan sesuai setting minimal nominal IWK.` });
@@ -381,14 +402,14 @@ router.post('/', requireRole('admin','petugas'), upload.single('foto_bayar'), as
   const grup = crypto.randomBytes(8).toString('hex');
   const hasilIuran = [];
 
-  for (let i = 0; i < periods.length; i++) {
-    const periode = periods[i];
+  for (let i = 0; i < targetPeriods.length; i++) {
+    const periode = targetPeriods[i];
     const nominalPeriode = Math.min(sisaBayar, totalIwk);
     sisaBayar -= nominalPeriode;
     const rincian = bagiIwk(nominalPeriode, param);
     const tanggalPeriode = new Date(periode.tahun, periode.bulan - 1, tanggalInput.getDate(), tanggalInput.getHours(), tanggalInput.getMinutes());
 
-    const iuran = await IuranWajib.create({
+    const payload = {
       warga: warga._id,
       petugas: req.session.user.id,
       nominal_bayar: nominalPeriode,
@@ -404,12 +425,23 @@ router.post('/', requireRole('admin','petugas'), upload.single('foto_bayar'), as
       bulan_ke: i + 1,
       total_bulan: jumlahBulan,
       rincian
-    });
-    hasilIuran.push(iuran);
+    };
+    const result = await IuranWajib.findOneAndUpdate(
+      { warga: warga._id, bulan: periode.bulan, tahun: periode.tahun },
+      { $setOnInsert: payload },
+      { upsert: true, new: true, setDefaultsOnInsert: true, includeResultMetadata: true }
+    );
+    if (!result.lastErrorObject?.updatedExisting) hasilIuran.push(result.value);
   }
 
-  await tulisAudit(req, 'CREATE', 'Iuran IWK', `Input IWK ${warga.nama} nominal ${nominalTotal} untuk ${jumlahBulan} bulan`);
-  res.json({ message: 'Pembayaran berhasil disimpan', jumlah_data: hasilIuran.length, data: hasilIuran });
+  const jumlahDiabaikan = skippedPeriods.length + (targetPeriods.length - hasilIuran.length);
+  if (hasilIuran.length) await tulisAudit(req, 'CREATE', 'Iuran IWK', `Input IWK ${warga.nama} nominal ${nominalTotal} untuk ${hasilIuran.length} bulan`);
+  const message = !hasilIuran.length
+    ? 'Pembayaran sudah pernah dicatat untuk periode yang dipilih, jadi tidak disimpan ulang.'
+    : jumlahDiabaikan
+      ? `Pembayaran berhasil disimpan untuk ${hasilIuran.length} bulan. ${jumlahDiabaikan} bulan yang sudah tercatat diabaikan.`
+      : 'Pembayaran berhasil disimpan';
+  res.json({ message, jumlah_data: hasilIuran.length, jumlah_diabaikan: jumlahDiabaikan, data: hasilIuran });
 });
 
 router.post('/donasi', requireRole('admin','petugas'), async (req, res) => {

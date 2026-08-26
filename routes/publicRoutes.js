@@ -273,9 +273,14 @@ router.post('/bukti-iwk', upload.single('foto_bukti'), async (req, res) => {
     const petugasPratinjau = await userRiwayatPratinjau();
     if (!petugasPratinjau) return res.status(500).json({ message: 'User admin/petugas untuk riwayat pratinjau belum tersedia.', data: payload });
 
+    const existingIuran = await IuranWajib.findOne({ warga: wargaId, bulan, tahun }).lean();
+    if (existingIuran) {
+      return res.json({ message: 'Pembayaran periode ini sudah tercatat, jadi bukti tidak disimpan ulang.', tersimpan: false, diabaikan: true });
+    }
+
     const bukti = await BuktiTransferIwk.create(payload);
     const nominalTransfer = Number(hasil.nominal_transfer || 0);
-    const iuran = await IuranWajib.create({
+    const iuranPayload = {
       warga: wargaId,
       petugas: petugasPratinjau._id,
       nominal_bayar: nominalTransfer,
@@ -292,7 +297,17 @@ router.post('/bukti-iwk', upload.single('foto_bukti'), async (req, res) => {
       bulan_ke: 1,
       total_bulan: 1,
       rincian: bagiIwk(nominalTransfer, param || {})
-    });
+    };
+    const result = await IuranWajib.findOneAndUpdate(
+      { warga: wargaId, bulan, tahun },
+      { $setOnInsert: iuranPayload },
+      { upsert: true, new: true, setDefaultsOnInsert: true, includeResultMetadata: true }
+    );
+    if (result.lastErrorObject?.updatedExisting) {
+      await BuktiTransferIwk.deleteOne({ _id: bukti._id });
+      return res.json({ message: 'Pembayaran periode ini sudah tercatat, jadi bukti tidak disimpan ulang.', tersimpan: false, diabaikan: true });
+    }
+    const iuran = result.value;
     bukti.iuran_wajib = iuran._id;
     await bukti.save();
     res.json({ message: 'Bukti transfer berhasil dikirim. Status IWK masuk pratinjau dan menunggu konfirmasi petugas.', data: { bukti, iuran }, tersimpan: true });

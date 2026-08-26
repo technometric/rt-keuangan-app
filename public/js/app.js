@@ -49,7 +49,7 @@ async function filterWargaBelumBayarBulanBerjalan(data, selectId){
   const { tahun, months } = selectedPaymentPeriod();
   const paid = new Set();
   await Promise.all(months.map(m => api(`/api/iuran-wajib?bulan=${m}&tahun=${tahun}`).then(rows => {
-    rows.filter(x => ['bayar','pratinjau'].includes(normStatus(x.status))).forEach(x => paid.add(`${String(x.warga?._id || x.warga || '')}:${m}`));
+    rows.forEach(x => paid.add(`${String(x.warga?._id || x.warga || '')}:${m}`));
   }).catch(() => {})));
   return data.filter(w => months.some(m => !paid.has(`${String(w._id)}:${m}`)));
 }
@@ -466,12 +466,12 @@ async function loadIwk() {
   riwayatIwkRows = data;
   const withDelete = el.dataset.actions === 'delete';
   const infoField = el.dataset.info === 'catatan' ? 'catatan' : 'petugas';
-  el.innerHTML = data.length ? data.map(x => {
+  el.innerHTML = data.length ? data.map((x, idx) => {
     const metode = x.metode_bayar === 'transfer' ? 'Transfer' : 'Cash';
     const info = infoField === 'catatan' ? (x.catatan_petugas || '-') : (x.petugas?.nama || '-');
     const actionButtons = withDelete ? `<td>${x.status === 'pratinjau' ? `<button class="mini-btn" type="button" onclick="showKonfirmasiIwkPratinjau('${x._id}')">Jadikan Bayar</button> ` : ''}<button class="mini-btn danger" type="button" onclick="deleteIwkRiwayat('${x._id}')">Hapus</button></td>` : '';
-    return `<tr><td>${new Date(x.tanggal).toLocaleDateString('id-ID')}</td><td>${esc(x.warga?.nama || '-')}<br><small>${esc(x.warga?.no_rumah || '-')}</small></td><td>${nominalIwkCell(x)}<br><small>${bulanNama[(x.bulan || 1)-1]} ${x.tahun || ''} · ${metode}</small></td><td><span class="badge outline ${statusClass(x.status)}">${labelStatus(x.status)}</span></td><td>${esc(info)}</td>${actionButtons}</tr>`;
-  }).join('') : `<tr><td colspan="${withDelete ? 6 : 5}" class="empty-cell">Riwayat tidak ditemukan.</td></tr>`;
+    return `<tr><td>${idx + 1}</td><td>${new Date(x.tanggal).toLocaleDateString('id-ID')}</td><td>${esc(x.warga?.nama || '-')}<br><small>${esc(x.warga?.no_rumah || '-')}</small></td><td>${nominalIwkCell(x)}<br><small>${bulanNama[(x.bulan || 1)-1]} ${x.tahun || ''} · ${metode}</small></td><td><span class="badge outline ${statusClass(x.status)}">${labelStatus(x.status)}</span></td><td>${esc(info)}</td>${actionButtons}</tr>`;
+  }).join('') : `<tr><td colspan="${withDelete ? 7 : 6}" class="empty-cell">Riwayat tidak ditemukan.</td></tr>`;
 }
 
 function setRiwayatPanelMode(mode = 'iwk'){
@@ -483,14 +483,14 @@ function setRiwayatPanelMode(mode = 'iwk'){
     if(title) title.textContent = 'Riwayat Donasi';
     if(desc) desc.textContent = 'Donasi sukarela bulan berjalan.';
     if(toolbar) toolbar.classList.add('hide');
-    if(thead) thead.innerHTML = '<tr><th>Tanggal</th><th>Penyumbang</th><th>Nominal</th><th>Petugas</th><th>Catatan</th><th>Aksi</th></tr>';
+    if(thead) thead.innerHTML = '<tr><th>No</th><th>Tanggal</th><th>Penyumbang</th><th>Nominal</th><th>Petugas</th><th>Catatan</th><th>Aksi</th></tr>';
     return;
   }
   if(title) title.textContent = 'Riwayat IWK';
   if(desc) desc.textContent = title.closest('body')?.querySelector('#formTunggakanIwk') ? 'Filter bulan/tahun atau cari baris yang akan dihapus.' : 'Bisa dicetak PDF sebagai bukti penagihan ke bendahara.';
   if(toolbar) toolbar.classList.remove('hide');
   const infoLabel = document.getElementById('riwayat')?.dataset.info === 'petugas' ? 'Petugas' : 'Catatan';
-  if(thead) thead.innerHTML = `<tr><th>Tanggal</th><th>Warga</th><th>Nominal</th><th>Status</th><th>${infoLabel}</th><th>Aksi</th></tr>`;
+  if(thead) thead.innerHTML = `<tr><th>No</th><th>Tanggal</th><th>Warga</th><th>Nominal</th><th>Status</th><th>${infoLabel}</th><th>Aksi</th></tr>`;
 }
 
 async function loadDonasiRiwayat(){
@@ -500,10 +500,10 @@ async function loadDonasiRiwayat(){
   const now = new Date();
   const res = await api(`/api/iuran-wajib/donasi/riwayat?bulan=${now.getMonth()+1}&tahun=${now.getFullYear()}`);
   const rows = res.rows || [];
-  el.innerHTML = rows.length ? rows.map(x => {
+  el.innerHTML = rows.length ? rows.map((x, idx) => {
     const [nama, rumah] = String(x.keterangan || '-').split(' - No ');
-    return `<tr><td>${new Date(x.tanggal).toLocaleDateString('id-ID')}</td><td>${esc(nama || '-')}<br><small>${esc(rumah || '-')}</small></td><td>${rupiah(x.debet || 0)}</td><td>${esc(x.dibuat_oleh?.nama || '-')}</td><td>${esc(x.keterangan || '-')}</td><td><button class="mini-btn" type="button" onclick="editDonasiRiwayat('${x._id}', ${Number(x.debet || 0)}, '${encodeURIComponent(x.keterangan || '')}')">Edit</button> <button class="mini-btn danger" type="button" onclick="deleteDonasiRiwayat('${x._id}')">Hapus</button></td></tr>`;
-  }).join('') : '<tr><td colspan="6" class="empty-cell">Belum ada donasi bulan berjalan.</td></tr>';
+    return `<tr><td>${idx + 1}</td><td>${new Date(x.tanggal).toLocaleDateString('id-ID')}</td><td>${esc(nama || '-')}<br><small>${esc(rumah || '-')}</small></td><td>${rupiah(x.debet || 0)}</td><td>${esc(x.dibuat_oleh?.nama || '-')}</td><td>${esc(x.keterangan || '-')}</td><td><button class="mini-btn" type="button" onclick="editDonasiRiwayat('${x._id}', ${Number(x.debet || 0)}, '${encodeURIComponent(x.keterangan || '')}')">Edit</button> <button class="mini-btn danger" type="button" onclick="deleteDonasiRiwayat('${x._id}')">Hapus</button></td></tr>`;
+  }).join('') : '<tr><td colspan="7" class="empty-cell">Belum ada donasi bulan berjalan.</td></tr>';
 }
 
 async function editDonasiRiwayat(id, currentNominal, currentKeterangan){
@@ -736,9 +736,15 @@ function bindIwkForm() {
       const months = checkedIwkMonths();
       if(document.getElementById('bulanChecklist') && !months.length) throw new Error('Pilih minimal 1 bulan pembayaran IWK.');
       if(months.length) formData.set('bulan_list_json', JSON.stringify(months));
+      const submitButton = form.querySelector('button[type="submit"], button:not([type])');
+      if(submitButton) submitButton.disabled = true;
       const result = await fetch('/api/iuran-wajib', { method: 'POST', body: formData }).then(async r => { const d = await r.json(); if(!r.ok) throw new Error(d.message); return d; });
       form.reset(); setupBulanMulai(); await loadWarga(); await setDefaultNominalIwk(); msg.textContent = result.message || 'Pembayaran berhasil disimpan.'; await loadIwk(); await loadPetugasBulanIniTotal();
     } catch (err) { msg.textContent = err.message; }
+    finally {
+      const submitButton = form.querySelector('button[type="submit"], button:not([type])');
+      if(submitButton) submitButton.disabled = false;
+    }
   });
 }
 
@@ -961,8 +967,9 @@ async function loadAdminIwkMonthlyReport(){
     <div class="summary-mini"><span>Jumlah Pembayaran</span><strong>${Number(data.jumlah_data || 0).toLocaleString('id-ID')}</strong></div>
   `;
   const rows = document.getElementById('adminIwkMonthlyRows');
-  if(rows) rows.innerHTML = data.rows?.length ? data.rows.map(x => `
+  if(rows) rows.innerHTML = data.rows?.length ? data.rows.map((x, idx) => `
     <tr>
+      <td>${idx + 1}</td>
       <td>${new Date(x.tanggal).toLocaleDateString('id-ID')}</td>
       <td>${esc(x.warga?.nama || '-')}</td>
       <td>${esc(x.warga?.no_rumah || '-')}</td>
@@ -970,7 +977,7 @@ async function loadAdminIwkMonthlyReport(){
       <td><span class="badge outline ${statusClass(x.status)}">${labelStatus(x.status)}</span></td>
       <td>${nominalIwkCell(x)}</td>
     </tr>
-  `).join('') : `<tr><td colspan="6" class="empty-cell">Belum ada data pembayaran IWK pada periode ini.</td></tr>`;
+  `).join('') : `<tr><td colspan="7" class="empty-cell">Belum ada data pembayaran IWK pada periode ini.</td></tr>`;
 }
 
 function downloadAdminIwkMonthlyPdf(){
