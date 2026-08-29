@@ -739,7 +739,9 @@ function bindIwkForm() {
       const submitButton = form.querySelector('button[type="submit"], button:not([type])');
       if(submitButton) submitButton.disabled = true;
       const result = await fetch('/api/iuran-wajib', { method: 'POST', body: formData }).then(async r => { const d = await r.json(); if(!r.ok) throw new Error(d.message); return d; });
-      form.reset(); setupBulanMulai(); await loadWarga(); await setDefaultNominalIwk(); msg.textContent = result.message || 'Pembayaran berhasil disimpan.'; await loadIwk(); await loadPetugasBulanIniTotal();
+      form.reset(); setupBulanMulai(); await loadWarga(); await setDefaultNominalIwk(); msg.textContent = result.message || 'Pembayaran berhasil disimpan.';
+      if(Number(result.jumlah_diabaikan || 0) > 0 || Number(result.jumlah_data || 0) === 0) alert(result.message || 'Pembayaran sudah pernah dicatat, jadi tidak disimpan ulang.');
+      await loadIwk(); await loadPetugasBulanIniTotal();
     } catch (err) { msg.textContent = err.message; }
     finally {
       const submitButton = form.querySelector('button[type="submit"], button:not([type])');
