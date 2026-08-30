@@ -31,6 +31,7 @@ router.get('/admin/kas', pageRole('admin'), (req, res) => res.render('admin/kas'
 router.get('/admin/users', pageRole('admin'), (req, res) => res.render('admin/users', { user: req.session.user }));
 router.get('/admin/maintenance', pageRole('admin'), (req, res) => res.render('admin/maintenance', { user: req.session.user }));
 router.get('/admin/laporan-keuangan', pageRole('admin'), (req, res) => res.render('admin/laporan-keuangan', { user: req.session.user }));
+router.get('/admin/form-manual', pageRole('admin'), (req, res) => res.render('admin/form-manual', { user: req.session.user }));
 router.get('/petugas/dashboard', pageRole('petugas'), (req, res) => res.render('petugas/dashboard', { user: req.session.user }));
 router.get('/umum/dashboard', requirePublicWarga, (req, res) => res.render('umum/dashboard', { user: req.session.user || null, publicWarga: req.session.publicWarga, publicMode: true }));
 module.exports = router;

@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Form Manual PDF</title>
+  <link rel="stylesheet" href="/css/style.css?v=<%= assetVersion %>">
+</head>
+<body>
+  <div class="app">
+    <%- include('../partials_nav') %>
+    <main class="main">
+      <div class="title">Form Manual PDF</div>
+      <div class="sub">Cetak lembar kerja kosong untuk penarikan IWK dan pencatatan pengeluaran kas RT manual.</div>
+
+      <div class="panel">
+        <h2>Form Penarikan IWK</h2>
+        <form action="/api/export/form-iwk-manual/pdf" method="get" target="_blank">
+          <div class="row two">
+            <label class="field-label">Area
+              <select class="select" name="area">
+                <option value="">Semua Area</option>
+                <option value="utara">Utara</option>
+                <option value="tengah">Tengah</option>
+                <option value="selatan">Selatan</option>
+              </select>
+            </label>
+          </div>
+          <div class="actions">
+            <button class="btn orange" type="submit">Export Form IWK PDF</button>
+          </div>
+        </form>
+      </div>
+
+      <div class="panel">
+        <h2>Form Pengeluaran Kas RT</h2>
+        <form action="/api/export/form-pengeluaran-manual/pdf" method="get" target="_blank">
+          <div class="row">
+            <label class="field-label">Jumlah Baris
+              <input class="input" type="number" name="rows" min="3" max="12" value="6">
+            </label>
+          </div>
+          <div class="actions">
+            <button class="btn orange" type="submit">Export Form Pengeluaran PDF</button>
+          </div>
+        </form>
+      </div>
+    </main>
+  </div>
+  <script src="/js/app.js?v=<%= assetVersion %>"></script>
+</body>
+</html>
