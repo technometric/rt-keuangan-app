@@ -194,6 +194,69 @@ router.get('/total-periode', requireRole('admin','petugas'), async (req, res) =>
   });
 });
 
+router.get('/dashboard-statistik', requireRole('admin'), async (req, res) => {
+  const IuranWajib = require('../models/IuranWajib');
+  const now = new Date();
+  const tahun = Number(req.query.tahun || now.getFullYear());
+  const bulanIni = now.getMonth() + 1;
+  const startYear = new Date(tahun, 0, 1, 0, 0, 0, 0);
+  const endYear = new Date(tahun, 11, 31, 23, 59, 59, 999);
+  const startMonth = new Date(tahun, bulanIni - 1, 1, 0, 0, 0, 0);
+  const endMonth = new Date(tahun, bulanIni, 0, 23, 59, 59, 999);
+
+  const [iwkBulanan, pengeluaranBulanan, pengeluaranBulanIniAgg, totalPengeluaranAgg] = await Promise.all([
+    IuranWajib.aggregate([
+      { $match: { tahun } },
+      { $group: { _id: '$bulan', total: { $sum: '$nominal_bayar' }, jumlah: { $sum: { $cond: [{ $gt: ['$nominal_bayar', 0] }, 1, 0] } } } },
+      { $sort: { _id: 1 } }
+    ]),
+    TransaksiKas.aggregate([
+      { $match: { kredit: { $gt: 0 }, tanggal: { $gte: startYear, $lte: endYear } } },
+      { $group: { _id: { $month: '$tanggal' }, total: { $sum: '$kredit' }, jumlah: { $sum: 1 } } },
+      { $sort: { _id: 1 } }
+    ]),
+    TransaksiKas.aggregate([
+      { $match: { kredit: { $gt: 0 }, tanggal: { $gte: startMonth, $lte: endMonth } } },
+      { $group: { _id: null, total: { $sum: '$kredit' }, jumlah: { $sum: 1 } } }
+    ]),
+    TransaksiKas.aggregate([
+      { $match: { kredit: { $gt: 0 } } },
+      { $group: { _id: null, total: { $sum: '$kredit' }, jumlah: { $sum: 1 } } }
+    ])
+  ]);
+
+  const iwkMap = new Map(iwkBulanan.map(row => [Number(row._id), row]));
+  const pengeluaranMap = new Map(pengeluaranBulanan.map(row => [Number(row._id), row]));
+  const grafik = Array.from({ length: 12 }, (_, i) => {
+    const bulan = i + 1;
+    const iwk = iwkMap.get(bulan);
+    const keluar = pengeluaranMap.get(bulan);
+    return {
+      bulan,
+      label: ['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agu','Sep','Okt','Nov','Des'][i],
+      pendapatan_iwk: Number(iwk?.total || 0),
+      transaksi_iwk: Number(iwk?.jumlah || 0),
+      pengeluaran: Number(keluar?.total || 0),
+      transaksi_pengeluaran: Number(keluar?.jumlah || 0)
+    };
+  });
+  const iwkBulanIni = grafik[bulanIni - 1]?.pendapatan_iwk || 0;
+  const transaksiIwkBulanIni = grafik[bulanIni - 1]?.transaksi_iwk || 0;
+
+  res.json({
+    tahun,
+    bulan: bulanIni,
+    periode: `${['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'][bulanIni - 1]} ${tahun}`,
+    pendapatan_iwk_bulan_ini: iwkBulanIni,
+    transaksi_iwk_bulan_ini: transaksiIwkBulanIni,
+    pengeluaran_bulan_ini: Number(pengeluaranBulanIniAgg[0]?.total || 0),
+    transaksi_pengeluaran_bulan_ini: Number(pengeluaranBulanIniAgg[0]?.jumlah || 0),
+    total_pengeluaran: Number(totalPengeluaranAgg[0]?.total || 0),
+    total_transaksi_pengeluaran: Number(totalPengeluaranAgg[0]?.jumlah || 0),
+    grafik
+  });
+});
+
 router.put('/:id', requireRole('admin'), async (req, res) => {
   const trx = await TransaksiKas.findById(req.params.id);
   if (!trx) return res.status(404).json({ message: 'Transaksi tidak ditemukan' });

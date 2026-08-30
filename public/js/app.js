@@ -162,27 +162,230 @@ async function loadSaldo() {
   });
   if(isPublic()) {
     try {
-      const pengeluaran = await api('/api/public/pengeluaran-bulan-terakhir');
+      const pengeluaran = await api('/api/public/pengeluaran-ringkasan');
       saldoCards.push(`
-        <button class="${cardClass} clickable-money-card expense-card" type="button" onclick="showPengeluaranDetail()">
-          <h3>Pengeluaran 1 Bulan Terakhir</h3>
-          <div class="money">${rupiah(pengeluaran.total || 0)}</div>
-          <span>${Number(pengeluaran.rows?.length || 0).toLocaleString('id-ID')} transaksi · Klik untuk detail</span>
+        <button class="${cardClass} clickable-money-card expense-card" type="button" onclick="showPengeluaranDetail('total')">
+          <h3>Total Pengeluaran</h3>
+          <div class="money">${rupiah(pengeluaran.total_pengeluaran || 0)}</div>
+          <span>${Number(pengeluaran.total_transaksi || 0).toLocaleString('id-ID')} transaksi · Klik untuk detail</span>
         </button>
       `);
-      window.publicPengeluaranTerakhir = pengeluaran;
+      window.publicPengeluaranRingkasan = pengeluaran;
+      renderPublicMonthlyChart(pengeluaran);
     } catch(e) {}
   }
   el.innerHTML = saldoCards.join('');
 }
 
-async function showPengeluaranDetail(){
+function renderPublicMonthlyChart(data = {}){
+  const panel = document.getElementById('publicMonthlyChartPanel');
+  const note = document.getElementById('publicMonthlyChartNote');
+  const wrap = document.getElementById('publicMonthlyChartWrap');
+  if(!panel || !wrap) return;
+  const rows = data.bulan_list || [];
+  if(note) note.textContent = data.periode_kartu || 'Periode berjalan';
+  panel.classList.remove('hide');
+  const chartRows = rows.map(row => ({
+    label: row.label_singkat || row.label || '-',
+    monthNumber: row.bulan,
+    labelFull: row.label || '-',
+    income: Number(row.pendapatan_iwk || 0),
+    expense: Number(row.total || 0),
+    bulan: row.bulan,
+    tahun: row.tahun
+  }));
+  const chartOptions = {
+    incomeLabel: 'Pendapatan IWK',
+    expenseLabel: 'Pengeluaran',
+    incomeColor: '#1f4ea3',
+    expenseColor: '#b91c1c',
+    onClick: point => showPengeluaranDetail('bulan', point.bulan, point.tahun)
+  };
+  if(window.matchMedia('(max-width: 560px)').matches) {
+    wrap.innerHTML = `
+      <canvas class="public-monthly-line-chart" data-chart-index="0"></canvas>
+      <canvas class="public-monthly-line-chart" data-chart-index="1"></canvas>
+    `;
+    [...wrap.querySelectorAll('canvas')].forEach((canvas, idx) => {
+      drawPairedLineChart(canvas, chartRows.slice(idx * 6, idx * 6 + 6), chartOptions);
+    });
+  } else {
+    wrap.innerHTML = '<canvas id="publicMonthlyChart" width="980" height="340"></canvas>';
+    drawPairedBarChart(wrap.querySelector('canvas'), chartRows, chartOptions);
+  }
+}
+
+function compactRupiah(n){
+  const value = Number(n || 0);
+  if(value >= 1000000) return `Rp${(value / 1000000).toLocaleString('id-ID', { maximumFractionDigits: 1 })}jt`;
+  if(value >= 1000) return `Rp${Math.round(value / 1000).toLocaleString('id-ID')}rb`;
+  return `Rp${value.toLocaleString('id-ID')}`;
+}
+
+function drawPairedLineChart(canvas, rows = [], options = {}){
+  const ctx = canvas.getContext('2d');
+  const cssWidth = canvas.clientWidth || 320;
+  const cssHeight = 230;
+  const ratio = window.devicePixelRatio || 1;
+  canvas.width = Math.floor(cssWidth * ratio);
+  canvas.height = Math.floor(cssHeight * ratio);
+  canvas.style.height = `${cssHeight}px`;
+  ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
+  ctx.clearRect(0, 0, cssWidth, cssHeight);
+
+  const pad = { left: 52, right: 14, top: 36, bottom: 34 };
+  const chartW = cssWidth - pad.left - pad.right;
+  const chartH = cssHeight - pad.top - pad.bottom;
+  const maxVal = Math.max(1, ...rows.flatMap(r => [r.income, r.expense]));
+  const niceMax = Math.ceil(maxVal / 100000) * 100000 || maxVal;
+  const points = [];
+
+  ctx.font = '11px Inter, system-ui, Arial';
+  ctx.strokeStyle = '#e2e8f0';
+  ctx.fillStyle = '#64748b';
+  ctx.textAlign = 'left';
+  ctx.fillText('Nominal', pad.left, 16);
+  for(let i = 0; i <= 3; i++){
+    const y = pad.top + chartH - (chartH * i / 3);
+    ctx.beginPath();
+    ctx.moveTo(pad.left, y);
+    ctx.lineTo(cssWidth - pad.right, y);
+    ctx.stroke();
+    ctx.fillText(compactRupiah(niceMax * i / 3), 4, y + 4);
+  }
+
+  const xFor = index => pad.left + (rows.length <= 1 ? chartW / 2 : chartW * index / (rows.length - 1));
+  const yFor = value => pad.top + chartH - (chartH * Number(value || 0) / niceMax);
+  const drawLine = (key, color) => {
+    ctx.beginPath();
+    rows.forEach((row, idx) => {
+      const x = xFor(idx);
+      const y = yFor(row[key]);
+      if(idx === 0) ctx.moveTo(x, y);
+      else ctx.lineTo(x, y);
+    });
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 2.4;
+    ctx.stroke();
+    rows.forEach((row, idx) => {
+      const x = xFor(idx);
+      const y = yFor(row[key]);
+      ctx.fillStyle = '#fff';
+      ctx.beginPath();
+      ctx.arc(x, y, 5, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = color;
+      ctx.lineWidth = 2;
+      ctx.stroke();
+      if(key === 'expense') points.push({ x, y, r: 16, ...row });
+    });
+  };
+
+  drawLine('income', options.incomeColor || '#1f4ea3');
+  drawLine('expense', options.expenseColor || '#b91c1c');
+
+  ctx.font = '11px Inter, system-ui, Arial';
+  ctx.textAlign = 'center';
+  ctx.fillStyle = '#475569';
+  rows.forEach((row, idx) => ctx.fillText(String(row.monthNumber || row.label), xFor(idx), cssHeight - 12));
+  ctx.textAlign = 'left';
+  ctx.fillStyle = options.incomeColor || '#1f4ea3';
+  ctx.fillRect(pad.left, 22, 9, 9);
+  ctx.fillStyle = '#0f172a';
+  ctx.fillText('IWK', pad.left + 14, 31);
+  ctx.fillStyle = options.expenseColor || '#b91c1c';
+  ctx.fillRect(pad.left + 54, 22, 9, 9);
+  ctx.fillStyle = '#0f172a';
+  ctx.fillText('Keluar', pad.left + 68, 31);
+
+  canvas.onclick = evt => {
+    if(typeof options.onClick !== 'function') return;
+    const rect = canvas.getBoundingClientRect();
+    const x = evt.clientX - rect.left;
+    const y = evt.clientY - rect.top;
+    const hit = points.find(point => Math.hypot(x - point.x, y - point.y) <= point.r);
+    if(hit) options.onClick(hit);
+  };
+}
+
+function drawPairedBarChart(canvas, rows = [], options = {}){
+  const ctx = canvas.getContext('2d');
+  const cssWidth = canvas.clientWidth || canvas.width || 980;
+  const cssHeight = Number.parseInt(getComputedStyle(canvas).height, 10) || 340;
+  const ratio = window.devicePixelRatio || 1;
+  canvas.width = Math.floor(cssWidth * ratio);
+  canvas.height = Math.floor(cssHeight * ratio);
+  ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
+  ctx.clearRect(0, 0, cssWidth, cssHeight);
+
+  const pad = { left: 70, right: 22, top: 38, bottom: 48 };
+  const chartW = cssWidth - pad.left - pad.right;
+  const chartH = cssHeight - pad.top - pad.bottom;
+  const maxVal = Math.max(1, ...rows.flatMap(r => [r.income, r.expense]));
+  const niceMax = Math.ceil(maxVal / 100000) * 100000 || maxVal;
+  const hitAreas = [];
+
+  ctx.font = '12px Inter, system-ui, Arial';
+  ctx.lineWidth = 1;
+  ctx.strokeStyle = '#e2e8f0';
+  ctx.fillStyle = '#64748b';
+  ctx.textAlign = 'left';
+  for(let i = 0; i <= 4; i++){
+    const y = pad.top + chartH - (chartH * i / 4);
+    ctx.beginPath();
+    ctx.moveTo(pad.left, y);
+    ctx.lineTo(cssWidth - pad.right, y);
+    ctx.stroke();
+    ctx.fillText(rupiah(niceMax * i / 4).replace('Rp ', 'Rp'), 8, y + 4);
+  }
+
+  const groupW = chartW / Math.max(1, rows.length);
+  const barW = Math.max(7, Math.min(20, groupW * 0.24));
+  rows.forEach((row, i) => {
+    const baseX = pad.left + i * groupW + groupW / 2;
+    const incomeH = chartH * row.income / niceMax;
+    const expenseH = chartH * row.expense / niceMax;
+    const incomeY = pad.top + chartH - incomeH;
+    const expenseY = pad.top + chartH - expenseH;
+    ctx.fillStyle = options.incomeColor || '#1f4ea3';
+    ctx.fillRect(baseX - barW - 2, incomeY, barW, incomeH);
+    ctx.fillStyle = options.expenseColor || '#b91c1c';
+    ctx.fillRect(baseX + 2, expenseY, barW, expenseH);
+    ctx.fillStyle = '#475569';
+    ctx.textAlign = 'center';
+    ctx.fillText(row.label, baseX, cssHeight - 22);
+    hitAreas.push({ x: baseX - groupW / 2, y: pad.top, w: groupW, h: chartH + 34, ...row });
+  });
+
+  ctx.textAlign = 'left';
+  ctx.fillStyle = options.incomeColor || '#1f4ea3';
+  ctx.fillRect(pad.left, 15, 12, 12);
+  ctx.fillStyle = '#0f172a';
+  ctx.fillText(options.incomeLabel || 'Pendapatan', pad.left + 18, 25);
+  ctx.fillStyle = options.expenseColor || '#b91c1c';
+  ctx.fillRect(pad.left + 142, 15, 12, 12);
+  ctx.fillStyle = '#0f172a';
+  ctx.fillText(options.expenseLabel || 'Pengeluaran', pad.left + 160, 25);
+
+  canvas.onclick = evt => {
+    if(typeof options.onClick !== 'function') return;
+    const rect = canvas.getBoundingClientRect();
+    const x = evt.clientX - rect.left;
+    const y = evt.clientY - rect.top;
+    const hit = hitAreas.find(area => x >= area.x && x <= area.x + area.w && y >= area.y && y <= area.y + area.h);
+    if(hit) options.onClick(hit);
+  };
+}
+
+async function showPengeluaranDetail(scope = 'bulan', bulanArg, tahunArg){
   const modal = document.getElementById('pengeluaranModal');
   if(!modal) return;
-  let data = window.publicPengeluaranTerakhir;
-  if(!data) data = await api('/api/public/pengeluaran-bulan-terakhir');
+  const ringkasan = window.publicPengeluaranRingkasan || {};
+  const bulan = bulanArg || ringkasan.bulan || new Date().getMonth() + 1;
+  const tahun = tahunArg || ringkasan.tahun || new Date().getFullYear();
+  const data = await api(`/api/public/pengeluaran-detail?scope=${encodeURIComponent(scope)}&bulan=${bulan}&tahun=${tahun}`);
   const rows = data.rows || [];
-  const periode = `${new Date(data.start).toLocaleDateString('id-ID')} - ${new Date(data.end).toLocaleDateString('id-ID')}`;
+  const periode = data.scope === 'total' ? 'Semua periode' : (data.periode || '-');
   const detailRows = rows.length ? rows.map(x => `
     <tr>
       <td>${new Date(x.tanggal).toLocaleDateString('id-ID')}</td>
@@ -190,7 +393,7 @@ async function showPengeluaranDetail(){
       <td>${esc(x.keterangan || '-')}</td>
       <td>${rupiah(x.kredit || 0)}</td>
     </tr>
-  `).join('') : '<tr><td colspan="4" class="empty-cell">Belum ada pengeluaran dalam 1 bulan terakhir.</td></tr>';
+  `).join('') : '<tr><td colspan="4" class="empty-cell">Belum ada data pengeluaran pada periode ini.</td></tr>';
   modal.innerHTML = `
     <div class="iwk-modal-backdrop" onclick="closePengeluaranDetail()"></div>
     <div class="iwk-modal-card expense-modal-card">
@@ -958,6 +1161,94 @@ async function initAdminIwkMonthlyReport(){
   await loadAdminIwkMonthlyReport();
 }
 
+async function initAdminDashboardStats(){
+  const tahun = document.getElementById('dashboardStatTahun');
+  if(tahun && !tahun.value) tahun.value = new Date().getFullYear();
+  await loadAdminDashboardStats();
+}
+
+function drawMonthlyFinanceChart(canvas, rows = []){
+  if(!canvas) return;
+  const ctx = canvas.getContext('2d');
+  const cssWidth = canvas.clientWidth || canvas.width || 980;
+  const cssHeight = 360;
+  const ratio = window.devicePixelRatio || 1;
+  canvas.width = Math.floor(cssWidth * ratio);
+  canvas.height = Math.floor(cssHeight * ratio);
+  canvas.style.height = `${cssHeight}px`;
+  ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
+  ctx.clearRect(0, 0, cssWidth, cssHeight);
+
+  const pad = { left: 70, right: 24, top: 34, bottom: 52 };
+  const chartW = cssWidth - pad.left - pad.right;
+  const chartH = cssHeight - pad.top - pad.bottom;
+  const maxVal = Math.max(1, ...rows.flatMap(r => [Number(r.pendapatan_iwk || 0), Number(r.pengeluaran || 0)]));
+  const niceMax = Math.ceil(maxVal / 100000) * 100000 || maxVal;
+
+  ctx.font = '12px Inter, system-ui, Arial';
+  ctx.lineWidth = 1;
+  ctx.strokeStyle = '#e2e8f0';
+  ctx.fillStyle = '#64748b';
+  for(let i = 0; i <= 4; i++){
+    const y = pad.top + chartH - (chartH * i / 4);
+    ctx.beginPath();
+    ctx.moveTo(pad.left, y);
+    ctx.lineTo(cssWidth - pad.right, y);
+    ctx.stroke();
+    const label = rupiah(niceMax * i / 4).replace('Rp ', 'Rp');
+    ctx.fillText(label, 8, y + 4);
+  }
+
+  const groupW = chartW / 12;
+  const barW = Math.max(8, Math.min(22, groupW * 0.24));
+  rows.forEach((row, i) => {
+    const baseX = pad.left + i * groupW + groupW / 2;
+    const incomeH = chartH * Number(row.pendapatan_iwk || 0) / niceMax;
+    const expenseH = chartH * Number(row.pengeluaran || 0) / niceMax;
+    const incomeY = pad.top + chartH - incomeH;
+    const expenseY = pad.top + chartH - expenseH;
+
+    ctx.fillStyle = '#15803d';
+    ctx.fillRect(baseX - barW - 2, incomeY, barW, incomeH);
+    ctx.fillStyle = '#b91c1c';
+    ctx.fillRect(baseX + 2, expenseY, barW, expenseH);
+    ctx.fillStyle = '#475569';
+    ctx.textAlign = 'center';
+    ctx.fillText(row.label || String(i + 1), baseX, cssHeight - 24);
+  });
+
+  ctx.textAlign = 'left';
+  ctx.fillStyle = '#15803d';
+  ctx.fillRect(pad.left, 14, 12, 12);
+  ctx.fillStyle = '#0f172a';
+  ctx.fillText('Pendapatan IWK', pad.left + 18, 24);
+  ctx.fillStyle = '#b91c1c';
+  ctx.fillRect(pad.left + 145, 14, 12, 12);
+  ctx.fillStyle = '#0f172a';
+  ctx.fillText('Pengeluaran Kas', pad.left + 163, 24);
+}
+
+async function loadAdminDashboardStats(){
+  const tahun = document.getElementById('dashboardStatTahun')?.value || new Date().getFullYear();
+  const summary = document.getElementById('dashboardStatSummary');
+  const canvas = document.getElementById('dashboardMonthlyChart');
+  if(!summary && !canvas) return;
+  try{
+    const data = await api(`/api/kas/dashboard-statistik?tahun=${tahun}`);
+    if(summary) summary.innerHTML = `
+      <div class="summary-mini income"><span>Pendapatan IWK Bulan Ini</span><strong>${rupiah(data.pendapatan_iwk_bulan_ini)}</strong></div>
+      <div class="summary-mini outcome"><span>Pengeluaran Bulan Ini</span><strong>${rupiah(data.pengeluaran_bulan_ini)}</strong></div>
+      <div class="summary-mini outcome"><span>Total Pengeluaran</span><strong>${rupiah(data.total_pengeluaran)}</strong></div>
+      <div class="summary-mini"><span>Periode</span><strong>${esc(data.periode || '-')}</strong></div>
+      <div class="summary-mini"><span>Transaksi IWK Bulan Ini</span><strong>${Number(data.transaksi_iwk_bulan_ini || 0).toLocaleString('id-ID')}</strong></div>
+      <div class="summary-mini"><span>Transaksi Pengeluaran</span><strong>${Number(data.transaksi_pengeluaran_bulan_ini || 0).toLocaleString('id-ID')} bulan ini · ${Number(data.total_transaksi_pengeluaran || 0).toLocaleString('id-ID')} total</strong></div>
+    `;
+    drawMonthlyFinanceChart(canvas, data.grafik || []);
+  }catch(err){
+    if(summary) summary.innerHTML = `<div class="summary-mini"><span>Keterangan</span><strong>${esc(err.message)}</strong></div>`;
+  }
+}
+
 async function loadAdminIwkMonthlyReport(){
   const bulan = document.getElementById('adminIwkReportBulan')?.value || new Date().getMonth() + 1;
   const tahun = document.getElementById('adminIwkReportTahun')?.value || new Date().getFullYear();
@@ -1056,7 +1347,7 @@ async function loadKasTotalPeriode() {
   try{
     const data = await api(`/api/kas/total-periode?dari=${dari}&sampai=${sampai}`);
     el.innerHTML = `
-      <div class="summary-mini income"><span>Total Pengeluaran</span><strong>${rupiah(data.total_pengeluaran)}</strong></div>
+      <div class="summary-mini outcome"><span>Total Pengeluaran</span><strong>${rupiah(data.total_pengeluaran)}</strong></div>
       <div class="summary-mini"><span>Total Pemasukan</span><strong>${rupiah(data.total_pemasukan)}</strong></div>
       <div class="summary-mini"><span>Jumlah Transaksi</span><strong>${Number(data.jumlah_pengeluaran || 0).toLocaleString('id-ID')} keluar · ${Number(data.jumlah_pemasukan || 0).toLocaleString('id-ID')} masuk</strong></div>
     `;

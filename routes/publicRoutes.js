@@ -136,6 +136,15 @@ function bulanTerakhirRange(periode = 1) {
   start.setMonth(start.getMonth() - periode);
   return { start, end };
 }
+function bulanBerjalanRange(bulan = new Date().getMonth() + 1, tahun = new Date().getFullYear()) {
+  const start = new Date(Number(tahun), Number(bulan) - 1, 1, 0, 0, 0, 0);
+  const end = new Date(Number(tahun), Number(bulan), 0, 23, 59, 59, 999);
+  return { start, end };
+}
+function tahunIwkRange(date = new Date()) {
+  const startYear = date.getMonth() + 1 >= 7 ? date.getFullYear() : date.getFullYear() - 1;
+  return Array.from({ length: 12 }, (_, i) => tambahBulan(7, startYear, i));
+}
 async function statusWargaPeriode(wargaId, bulan, tahun) {
   const item = await IuranWajib.findOne({ warga: wargaId, bulan, tahun }).sort({ nominal_bayar: -1, tanggal: -1 }).lean();
   return item ? normalizeStatus(item.status) : 'belum_bayar';
@@ -185,6 +194,84 @@ router.get('/pengeluaran-bulan-terakhir', async (req, res) => {
   }).sort({ tanggal: -1, createdAt: -1 }).limit(300).lean();
   const total = rows.reduce((sum, row) => sum + Number(row.kredit || 0), 0);
   res.json({ total, start, end, rows });
+});
+
+router.get('/pengeluaran-ringkasan', async (req, res) => {
+  const now = new Date();
+  const bulan = Number(req.query.bulan || now.getMonth() + 1);
+  const tahun = Number(req.query.tahun || now.getFullYear());
+  const { start, end } = bulanBerjalanRange(bulan, tahun);
+  const periodeBulanan = tahunIwkRange(now);
+  const startPeriode = bulanBerjalanRange(periodeBulanan[0].bulan, periodeBulanan[0].tahun).start;
+  const endPeriode = bulanBerjalanRange(periodeBulanan[11].bulan, periodeBulanan[11].tahun).end;
+  const jenisKas = await publicKasKeys();
+  const baseFilter = { jenis_kas: { $in: jenisKas }, kredit: { $gt: 0 } };
+  const [bulanan, perBulan, iwkPerBulan, total] = await Promise.all([
+    TransaksiKas.aggregate([
+      { $match: { ...baseFilter, tanggal: { $gte: start, $lte: end } } },
+      { $group: { _id: null, total: { $sum: '$kredit' }, jumlah: { $sum: 1 } } }
+    ]),
+    TransaksiKas.aggregate([
+      { $match: { ...baseFilter, tanggal: { $gte: startPeriode, $lte: endPeriode } } },
+      { $group: { _id: { bulan: { $month: '$tanggal' }, tahun: { $year: '$tanggal' } }, total: { $sum: '$kredit' }, jumlah: { $sum: 1 } } }
+    ]),
+    IuranWajib.aggregate([
+      { $match: { $or: periodeBulanan.map(p => ({ bulan: p.bulan, tahun: p.tahun })) } },
+      { $group: { _id: { bulan: '$bulan', tahun: '$tahun' }, total: { $sum: '$nominal_bayar' }, jumlah: { $sum: { $cond: [{ $gt: ['$nominal_bayar', 0] }, 1, 0] } } } }
+    ]),
+    TransaksiKas.aggregate([
+      { $match: baseFilter },
+      { $group: { _id: null, total: { $sum: '$kredit' }, jumlah: { $sum: 1 } } }
+    ])
+  ]);
+  const perBulanMap = new Map(perBulan.map(row => [`${row._id.tahun}-${row._id.bulan}`, row]));
+  const iwkPerBulanMap = new Map(iwkPerBulan.map(row => [`${row._id.tahun}-${row._id.bulan}`, row]));
+  res.json({
+    bulan,
+    tahun,
+    periode: periodeLabel(bulan, tahun),
+    periode_kartu: `${periodeLabel(periodeBulanan[0].bulan, periodeBulanan[0].tahun)} - ${periodeLabel(periodeBulanan[11].bulan, periodeBulanan[11].tahun)}`,
+    pengeluaran_bulanan: Number(bulanan[0]?.total || 0),
+    transaksi_bulanan: Number(bulanan[0]?.jumlah || 0),
+    total_pengeluaran: Number(total[0]?.total || 0),
+    total_transaksi: Number(total[0]?.jumlah || 0),
+    bulan_list: periodeBulanan.map(p => {
+      const row = perBulanMap.get(`${p.tahun}-${p.bulan}`);
+      const iwk = iwkPerBulanMap.get(`${p.tahun}-${p.bulan}`);
+      return {
+        bulan: p.bulan,
+        tahun: p.tahun,
+        label: periodeLabel(p.bulan, p.tahun),
+        label_singkat: bulanFull[p.bulan - 1].slice(0, 3),
+        pendapatan_iwk: Number(iwk?.total || 0),
+        transaksi_iwk: Number(iwk?.jumlah || 0),
+        total: Number(row?.total || 0),
+        jumlah: Number(row?.jumlah || 0)
+      };
+    })
+  });
+});
+
+router.get('/pengeluaran-detail', async (req, res) => {
+  const now = new Date();
+  const scope = String(req.query.scope || 'bulan');
+  const bulan = Number(req.query.bulan || now.getMonth() + 1);
+  const tahun = Number(req.query.tahun || now.getFullYear());
+  const jenisKas = await publicKasKeys();
+  const filter = { jenis_kas: { $in: jenisKas }, kredit: { $gt: 0 } };
+  let periode = 'Total Pengeluaran';
+  let start = null;
+  let end = null;
+  if (scope !== 'total') {
+    const range = bulanBerjalanRange(bulan, tahun);
+    start = range.start;
+    end = range.end;
+    filter.tanggal = { $gte: start, $lte: end };
+    periode = periodeLabel(bulan, tahun);
+  }
+  const rows = await TransaksiKas.find(filter).sort({ tanggal: -1, createdAt: -1 }).limit(500).lean();
+  const total = rows.reduce((sum, row) => sum + Number(row.kredit || 0), 0);
+  res.json({ scope, bulan, tahun, periode, start, end, total, rows });
 });
 
 router.get('/donasi', async (req, res) => {

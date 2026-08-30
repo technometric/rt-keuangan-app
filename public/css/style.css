@@ -97,6 +97,12 @@
 @media(max-width:760px){.transfer-info-card{display:block}.transfer-owner{text-align:left;margin-top:14px}.rekening-copy-btn{width:100%;justify-content:space-between}}
 .transfer-info-card,.transfer-info-card *{min-width:0}.transfer-info-card h3,.transfer-owner strong,.rekening-copy-btn span{overflow-wrap:anywhere;word-break:break-word}.transfer-wa-btn{max-width:100%;white-space:normal;text-align:center;line-height:1.25}
 @media(max-width:760px){.transfer-wa-btn{width:100%;display:block}.transfer-owner strong{font-size:15px}.rekening-copy-btn{font-size:16px}}
+.dashboard-summary-grid{grid-template-columns:repeat(3,minmax(0,1fr))}
+.dashboard-chart-wrap{width:100%;overflow:hidden;border:1px solid #e2e8f0;border-radius:16px;background:#fff;padding:12px;margin-top:12px}
+.dashboard-chart-wrap canvas{display:block;width:100%;height:360px}
+.public-monthly-line-chart{height:230px!important}
+@media(max-width:760px){.dashboard-summary-grid{grid-template-columns:1fr}.dashboard-chart-wrap{padding:8px}.dashboard-chart-wrap canvas{height:320px}}
+@media(max-width:560px){.public-chart-wrap{padding:6px}.public-chart-wrap canvas{height:230px!important}.public-monthly-line-chart + .public-monthly-line-chart{border-top:1px solid #e2e8f0;margin-top:8px;padding-top:8px}}
 .compact-login-card{max-width:360px;padding:24px}.compact-login-card .brand{text-align:center;margin-bottom:18px}.captcha-row{display:grid;grid-template-columns:72px 1fr auto;gap:8px;align-items:center}.captcha-row span{height:44px;display:grid;place-items:center;border:1px solid var(--line);border-radius:14px;background:#f8fafc;font-weight:900;color:#0f172a}.captcha-row .input{margin:0}.login-msg{min-height:20px;margin-bottom:0;text-align:center}
 @media(max-width:420px){.captcha-row{grid-template-columns:1fr}.captcha-row .mini-btn{height:40px}}
 .inline-setting{display:inline-grid;gap:6px;margin-top:10px}.year-control .mini-input{width:96px;margin:0;padding:8px 10px;border-radius:12px}.year-control .mini-select{min-width:130px}

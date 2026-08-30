@@ -27,6 +27,25 @@
       <div class="panel">
         <div class="table-toolbar">
           <div>
+            <h2>Statistik Bulanan</h2>
+            <p class="sub">Ringkasan pendapatan IWK dan pengeluaran kas.</p>
+          </div>
+          <div class="toolbar-actions">
+            <label class="compact-field">Tahun
+              <input id="dashboardStatTahun" class="input mini-input" type="number">
+            </label>
+            <button class="btn" type="button" onclick="loadAdminDashboardStats()">Tampilkan</button>
+          </div>
+        </div>
+        <div id="dashboardStatSummary" class="summary-grid dashboard-summary-grid"></div>
+        <div class="dashboard-chart-wrap">
+          <canvas id="dashboardMonthlyChart" width="980" height="360"></canvas>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="table-toolbar">
+          <div>
             <h2>Laporan Bulanan Pemasukan IWK</h2>
             <p class="sub">Data dari input admin/petugas. Setoran ke Kas RT tetap dicatat manual saat bendahara menerima uang.</p>
           </div>
@@ -64,6 +83,6 @@
     </main>
   </div>
   <script src="/js/app.js?v=<%= assetVersion %>"></script>
-  <script>loadSaldo();loadIwkProgress();initAdminIwkMonthlyReport();loadAudit()</script>
+  <script>loadSaldo();loadIwkProgress();initAdminDashboardStats();initAdminIwkMonthlyReport();loadAudit()</script>
 </body>
 </html>
