@@ -26,6 +26,7 @@ let activePaymentTab = 'iwk';
 let lastTotalIwk = 0;
 let lastParamIwk = null;
 let selectedIwkWarga = null;
+let nominalIwkManual = false;
 
 function esc(s){
   return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -672,7 +673,8 @@ async function loadIwk() {
   el.innerHTML = data.length ? data.map((x, idx) => {
     const metode = x.metode_bayar === 'transfer' ? 'Transfer' : 'Cash';
     const info = infoField === 'catatan' ? (x.catatan_petugas || '-') : (x.petugas?.nama || '-');
-    const actionButtons = withDelete ? `<td>${x.status === 'pratinjau' ? `<button class="mini-btn" type="button" onclick="showKonfirmasiIwkPratinjau('${x._id}')">Jadikan Bayar</button> ` : ''}<button class="mini-btn danger" type="button" onclick="deleteIwkRiwayat('${x._id}')">Hapus</button></td>` : '';
+    const encodedCatatan = encodeURIComponent(x.catatan_petugas || '');
+    const actionButtons = withDelete ? `<td>${x.status === 'pratinjau' ? `<button class="mini-btn" type="button" onclick="showKonfirmasiIwkPratinjau('${x._id}')">Jadikan Bayar</button> ` : ''}<button class="mini-btn" type="button" onclick="editIwkRiwayat('${x._id}', ${Number(x.nominal_bayar || 0)}, '${encodedCatatan}')">Edit</button> <button class="mini-btn danger" type="button" onclick="deleteIwkRiwayat('${x._id}')">Hapus</button></td>` : '';
     return `<tr><td>${idx + 1}</td><td>${new Date(x.tanggal).toLocaleDateString('id-ID')}</td><td>${esc(x.warga?.nama || '-')}<br><small>${esc(x.warga?.no_rumah || '-')}</small></td><td>${nominalIwkCell(x)}<br><small>${bulanNama[(x.bulan || 1)-1]} ${x.tahun || ''} · ${metode}</small></td><td><span class="badge outline ${statusClass(x.status)}">${labelStatus(x.status)}</span></td><td>${esc(info)}</td>${actionButtons}</tr>`;
   }).join('') : `<tr><td colspan="${withDelete ? 7 : 6}" class="empty-cell">Riwayat tidak ditemukan.</td></tr>`;
 }
@@ -754,6 +756,20 @@ function setupRiwayatFilters(){
   }
 }
 
+async function editIwkRiwayat(id, currentNominal = 0, currentCatatan = ''){
+  const nominal = prompt('Edit nominal IWK:', currentNominal || 0);
+  if(nominal === null) return;
+  const catatan = prompt('Edit catatan IWK:', decodeURIComponent(currentCatatan || ''));
+  if(catatan === null) return;
+  await api(`/api/iuran-wajib/${id}`, {
+    method: 'PUT',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({ nominal_bayar: Number(nominal), catatan_petugas: catatan })
+  });
+  await loadIwk();
+  await loadWarga();
+  await loadPetugasBulanIniTotal();
+}
 async function deleteIwkRiwayat(id){
   const text = prompt('Ketik hapus untuk konfirmasi hapus riwayat IWK ini.');
   if(String(text || '').toLowerCase() !== 'hapus') return;
@@ -882,8 +898,9 @@ function checkedIwkMonths(){
 function updateNominalForCheckedMonths(){
   const nominal = document.getElementById('nominalBayar');
   if(nominal && lastTotalIwk > 0) {
-    nominal.value = lastTotalIwk * checkedMonthCount();
-    if(Number(nominal.dataset.minPerBulan || 0) > 0) nominal.min = Number(nominal.dataset.minPerBulan || 0) * checkedMonthCount();
+    const defaultNominal = lastTotalIwk * checkedMonthCount();
+    if(!nominalIwkManual || !nominal.value) nominal.value = defaultNominal;
+    nominal.min = 1;
     nominal.placeholder = `Nominal total bayar (${rupiah(lastTotalIwk)} x ${checkedMonthCount()} bulan)`;
   }
 }
@@ -913,15 +930,18 @@ function applyIwkCutoffToChecklist(cutoffBulan = 7, cutoffTahun = 2026){
 async function setDefaultNominalIwk(){
   const nominal = document.getElementById('nominalBayar');
   if(!nominal) return;
+  if(!nominal.dataset.manualBound){
+    nominal.dataset.manualBound = 'true';
+    nominal.addEventListener('input', () => {
+      nominalIwkManual = true;
+    });
+  }
   try{
     const p = await api('/api/parameter-iwk');
     lastParamIwk = p;
     lastTotalIwk = totalIwkForWarga(selectedIwkWarga, p);
-    const minimal = Number(p.minimal_nominal_iwk || 0);
-    if(minimal > 0) {
-      nominal.min = minimal * checkedMonthCount();
-      nominal.dataset.minPerBulan = minimal;
-    }
+    nominal.min = 1;
+    nominal.step = 1000;
     applyIwkCutoffToChecklist(Number(p.iwk_cutoff_bulan || 7), Number(p.iwk_cutoff_tahun || 2026));
     updateSelectedIwkWargaInfo(selectedIwkWarga);
     updateNominalForCheckedMonths();
@@ -942,6 +962,7 @@ function bindIwkForm() {
       const submitButton = form.querySelector('button[type="submit"], button:not([type])');
       if(submitButton) submitButton.disabled = true;
       const result = await fetch('/api/iuran-wajib', { method: 'POST', body: formData }).then(async r => { const d = await r.json(); if(!r.ok) throw new Error(d.message); return d; });
+      nominalIwkManual = false;
       form.reset(); setupBulanMulai(); await loadWarga(); await setDefaultNominalIwk(); msg.textContent = result.message || 'Pembayaran berhasil disimpan.';
       if(Number(result.jumlah_diabaikan || 0) > 0 || Number(result.jumlah_data || 0) === 0) alert(result.message || 'Pembayaran sudah pernah dicatat, jadi tidak disimpan ulang.');
       await loadIwk(); await loadPetugasBulanIniTotal();
