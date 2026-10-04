@@ -551,6 +551,12 @@ function totalIwkForWarga(warga = selectedIwkWarga, param = lastParamIwk){
   return keys.reduce((total, key) => total + Number((param[key] ?? (key === 'kas_pkk' ? param.kas_rw : 0)) || 0), 0);
 }
 
+function minimumNominalIwk(param = lastParamIwk){
+  const customMinimum = Number(param?.minimal_nominal_iwk || 0);
+  if(customMinimum > 0) return customMinimum;
+  return Number(param?.uang_satpam || 0) + Number(param?.uang_sampah || 0) || 1;
+}
+
 function updateSelectedIwkWargaInfo(warga){
   selectedIwkWarga = warga || null;
   lastTotalIwk = totalIwkForWarga(selectedIwkWarga);
@@ -900,7 +906,7 @@ function updateNominalForCheckedMonths(){
   if(nominal && lastTotalIwk > 0) {
     const defaultNominal = lastTotalIwk * checkedMonthCount();
     if(!nominalIwkManual || !nominal.value) nominal.value = defaultNominal;
-    nominal.min = 1;
+    nominal.min = minimumNominalIwk();
     nominal.placeholder = `Nominal total bayar (${rupiah(lastTotalIwk)} x ${checkedMonthCount()} bulan)`;
   }
 }
@@ -940,8 +946,8 @@ async function setDefaultNominalIwk(){
     const p = await api('/api/parameter-iwk');
     lastParamIwk = p;
     lastTotalIwk = totalIwkForWarga(selectedIwkWarga, p);
-    nominal.min = 1;
-    nominal.step = 1000;
+    nominal.min = minimumNominalIwk(p);
+    nominal.step = 'any';
     applyIwkCutoffToChecklist(Number(p.iwk_cutoff_bulan || 7), Number(p.iwk_cutoff_tahun || 2026));
     updateSelectedIwkWargaInfo(selectedIwkWarga);
     updateNominalForCheckedMonths();
